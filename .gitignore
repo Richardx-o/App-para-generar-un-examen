@@ -1,0 +1,14 @@
+# Variables de entorno
+.env
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Sistema
+.DS_Store
+
+# Docker (por si acaso)
+*.log

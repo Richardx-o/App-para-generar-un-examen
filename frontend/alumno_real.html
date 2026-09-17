@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Vista del Alumno (conectado a Supabase)</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  body { font-family: sans-serif; max-width: 650px; margin: 20px auto; padding: 0 10px; }
+  label { display: block; margin-top: 10px; }
+  input { margin-top: 4px; }
+  fieldset { margin-bottom: 20px; }
+  .pregunta { border: 1px solid #999; padding: 10px; margin-bottom: 12px; }
+  .pregunta label { font-weight: normal; margin: 4px 0; }
+  button { padding: 6px 12px; margin-top: 10px; cursor: pointer; }
+  .nota { color: #555; font-size: 13px; }
+  .error { color: red; }
+  #panel-alumno, #pantalla-examen, #pantalla-resultado { display: none; }
+</style>
+</head>
+
+<link rel="icon" type="image/png" href="Imagenes/Logo.webp">
+
+<body>
+
+<h1>Vista del Alumno</h1>
+
+<p id="verificando" class="nota">Verificando sesión…</p>
+
+<div id="panel-alumno">
+  <p><span id="sesion-info"></span> — <button onclick="cerrarSesion()">Cerrar sesión</button></p>
+
+  <fieldset id="panel-codigo">
+    <legend><b>Unirme a un examen</b></legend>
+    <label>Código de acceso <input type="text" id="input-codigo"></label>
+    <button onclick="unirseAExamen()">Entrar al examen</button>
+    <p id="codigo-error" class="error" style="display:none;"></p>
+  </fieldset>
+
+  <div id="pantalla-examen">
+    <h2 id="titulo-examen"></h2>
+    <form id="form-respuestas"></form>
+    <button onclick="entregarExamen()">Entregar examen</button>
+    <p id="entrega-error" class="error" style="display:none;"></p>
+  </div>
+
+  <div id="pantalla-resultado">
+    <h2>Resultado</h2>
+    <p>Calificación: <span id="res-calificacion"></span>%</p>
+    <button onclick="descargarResultado()">Descargar resultado (PDF)</button>
+    <p id="descarga-error" class="error" style="display:none;"></p>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://qnrkvnnuyfirrohnmzoe.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_Y9O5EuZiuUAZ8l0QybWkLQ_Y4by6uhb';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+// Ajusta esto si tu backend corre en otro host/puerto.
+const BACKEND_URL = 'http://localhost:8001';
+
+let usuarioActual = null;
+let intentoActual = null;
+let preguntasActuales = [];
+
+function continuarComoAlumno(usuario) {
+  usuarioActual = usuario;
+  document.getElementById('verificando').style.display = 'none';
+  document.getElementById('sesion-info').textContent = `Conectado como ${usuario.email}`;
+  document.getElementById('panel-alumno').style.display = 'block';
+}
+
+async function cerrarSesion() {
+  await sb.auth.signOut();
+  location.href = 'index.html';
+}
+
+// El login vive solo en index.html. Aquí solo comprobamos si ya existe
+// una sesión (compartida por estar en el mismo origen http://localhost:5500);
+// si no hay ninguna, no tiene caso mostrar nada de este panel.
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    continuarComoAlumno(session.user);
+  } else {
+    location.href = 'index.html';
+  }
+})();
+
+async function unirseAExamen() {
+  const codigo = document.getElementById('input-codigo').value.trim();
+  const errorEl = document.getElementById('codigo-error');
+  errorEl.style.display = 'none';
+
+  const { data: intentoId, error } = await sb.rpc('unirse_a_examen', { p_codigo_acceso: codigo });
+  if (error) { errorEl.textContent = error.message; errorEl.style.display = 'block'; return; }
+  intentoActual = intentoId;
+
+  const { data: intento } = await sb.from('intentos_examen').select('examen_id, estado').eq('id', intentoId).single();
+  if (intento.estado === 'entregado') {
+    errorEl.textContent = 'Ya entregaste este examen anteriormente.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  const { data: examen } = await sb.from('examenes').select('titulo').eq('id', intento.examen_id).single();
+  const { data: preguntas } = await sb.from('examen_preguntas').select('*').eq('examen_id', intento.examen_id).order('orden');
+  preguntasActuales = preguntas;
+
+  document.getElementById('panel-codigo').style.display = 'none';
+  document.getElementById('pantalla-examen').style.display = 'block';
+  document.getElementById('titulo-examen').textContent = examen.titulo;
+
+  const form = document.getElementById('form-respuestas');
+  form.innerHTML = '';
+  preguntas.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.className = 'pregunta';
+    let html = `<b>${i+1}. ${p.pregunta_texto}</b><br>`;
+    ['A','B','C','D'].forEach(letra => {
+      const opcion = p[`opcion_${letra.toLowerCase()}`];
+      html += `<label><input type="radio" name="pregunta-${p.id}" value="${letra}"> ${letra}) ${opcion}</label>`;
+    });
+    div.innerHTML = html;
+    form.appendChild(div);
+  });
+}
+
+async function entregarExamen() {
+  const errorEl = document.getElementById('entrega-error');
+  errorEl.style.display = 'none';
+
+  const respuestas = preguntasActuales.map(p => {
+    const seleccion = document.querySelector(`input[name="pregunta-${p.id}"]:checked`);
+    return seleccion ? { intento_id: intentoActual, examen_pregunta_id: p.id, letra_seleccionada: seleccion.value } : null;
+  }).filter(r => r !== null);
+
+  if (respuestas.length < preguntasActuales.length) {
+    errorEl.textContent = 'Contesta todas las preguntas antes de entregar.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  const { error: errorInsert } = await sb.from('respuestas_alumno').upsert(respuestas, { onConflict: 'intento_id,examen_pregunta_id' });
+  if (errorInsert) { errorEl.textContent = errorInsert.message; errorEl.style.display = 'block'; return; }
+
+  const { data: calificacion, error: errorCalificar } = await sb.rpc('calificar_intento', { p_intento_id: intentoActual });
+  if (errorCalificar) { errorEl.textContent = errorCalificar.message; errorEl.style.display = 'block'; return; }
+
+  document.getElementById('pantalla-examen').style.display = 'none';
+  document.getElementById('pantalla-resultado').style.display = 'block';
+  document.getElementById('res-calificacion').textContent = calificacion;
+}
+
+async function descargarResultado() {
+  const errorEl = document.getElementById('descarga-error');
+  errorEl.style.display = 'none';
+
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { errorEl.textContent = 'Sesión expirada, vuelve a iniciar sesión.'; errorEl.style.display = 'block'; return; }
+
+  const resp = await fetch(`${BACKEND_URL}/api/examenes/resultado/${intentoActual}`, {
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  });
+
+  if (!resp.ok) {
+    const detalle = await resp.json().catch(() => ({}));
+    errorEl.textContent = detalle.detail || `Error al generar el PDF (${resp.status}).`;
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  const blob = await resp.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'resultado.pdf';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>

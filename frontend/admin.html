@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Panel del Administrador</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  body { font-family: sans-serif; max-width: 750px; margin: 20px auto; padding: 0 10px; }
+  fieldset { margin-bottom: 25px; }
+  table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+  th, td { border: 1px solid #999; padding: 6px; text-align: left; font-size: 14px; }
+  button { padding: 4px 10px; cursor: pointer; }
+  .nota { color: #555; font-size: 13px; }
+  .error { color: red; }
+  .stat { display: inline-block; border: 1px solid #999; padding: 10px 20px; margin-right: 10px; text-align: center; }
+  .stat b { display: block; font-size: 20px; }
+  .inactivo { opacity: 0.5; }
+  #panel-admin { display: none; }
+</style>
+</head>
+
+<link rel="icon" type="image/png" href="Imagenes/Logo.webp">
+
+<body>
+
+<h1>Panel del Administrador</h1>
+
+<p id="verificando" class="nota">Verificando sesión…</p>
+<p id="acceso-denegado" class="error" style="display:none;">
+  Esta cuenta no tiene rol de administrador. <a href="index.html">Volver al inicio</a>.<br>
+  <span class="nota">Para promover una cuenta a admin:<br>
+  <code>update public.perfiles set rol='admin' where id=(select id from auth.users where email='tu@correo.com');</code></span>
+</p>
+
+<div id="panel-admin">
+  <p><span id="sesion-info"></span> — <button onclick="cerrarSesion()">Cerrar sesión</button></p>
+
+  <fieldset>
+    <legend><b>1. Vista general</b></legend>
+    <div class="stat"><b id="stat-usuarios">-</b>usuarios</div>
+    <div class="stat"><b id="stat-profesores">-</b>maestros</div>
+    <div class="stat"><b id="stat-preguntas">-</b>preguntas</div>
+    <div class="stat"><b id="stat-examenes">-</b>exámenes</div>
+  </fieldset>
+
+  <fieldset>
+    <legend><b>2. Clave de registro para maestros</b></legend>
+    <input type="text" id="input-clave">
+    <button onclick="guardarClave()">Guardar</button>
+    <p id="clave-msg" style="display:none;"></p>
+  </fieldset>
+
+  <fieldset>
+    <legend><b>3. Usuarios y roles</b></legend>
+    <button onclick="cargarUsuarios()">Actualizar lista</button>
+    <table id="tabla-usuarios">
+      <thead><tr><th>Nombre</th><th>Rol actual</th><th>Estado</th><th>Registrado</th><th>Acciones</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </fieldset>
+
+  <fieldset>
+    <legend><b>4. Moderación del banco de preguntas (de todos los maestros)</b></legend>
+    <p class="nota">Aquí NO se crean preguntas nuevas — eso lo hace cada maestro en su propio panel. Esta sección es solo para revisar y, si hace falta, desactivar o borrar contenido inapropiado o duplicado de cualquier maestro.</p>
+    <button onclick="cargarPreguntas()">Actualizar lista</button>
+    <table id="tabla-preguntas-global">
+      <thead><tr><th>Pregunta</th><th>Categoría</th><th>Dificultad</th><th>Estado</th><th>Acciones</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </fieldset>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://qnrkvnnuyfirrohnmzoe.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_Y9O5EuZiuUAZ8l0QybWkLQ_Y4by6uhb';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+// Ajusta esto si tu backend corre en otro host/puerto.
+const BACKEND_URL = 'http://localhost:8001';
+
+async function continuarComoAdmin(usuario) {
+  const { data: perfil } = await sb.from('perfiles').select('rol').eq('id', usuario.id).single();
+  document.getElementById('verificando').style.display = 'none';
+
+  if (!perfil || perfil.rol !== 'admin') {
+    document.getElementById('acceso-denegado').style.display = 'block';
+    return false;
+  }
+
+  document.getElementById('sesion-info').textContent = `Conectado como ${usuario.email}`;
+  document.getElementById('panel-admin').style.display = 'block';
+  cargarUsuarios();
+  cargarStats();
+  cargarClave();
+  cargarPreguntas();
+  return true;
+}
+
+async function cerrarSesion() {
+  await sb.auth.signOut();
+  location.href = 'index.html';
+}
+
+// El login vive solo en index.html. Aquí solo comprobamos si ya existe
+// una sesión (compartida por estar en el mismo origen http://localhost:5500);
+// si no hay ninguna, no tiene caso mostrar nada de este panel.
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    await continuarComoAdmin(session.user);
+  } else {
+    location.href = 'index.html';
+  }
+})();
+
+async function cargarUsuarios() {
+  const { data, error } = await sb.from('perfiles').select('id, nombre_completo, rol, activo, creado_en').order('creado_en', { ascending: false });
+  const tbody = document.querySelector('#tabla-usuarios tbody');
+  tbody.innerHTML = '';
+  if (error) { console.error(error); return; }
+  data.forEach(u => {
+    const opciones = ['alumno','profesor','admin'].map(r => `<option value="${r}" ${r===u.rol?'selected':''}>${r}</option>`).join('');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${u.nombre_completo || '(sin nombre)'}</td>
+      <td><select onchange="cambiarRol('${u.id}', this.value)">${opciones}</select></td>
+      <td>${u.activo ? 'Activa' : 'Desactivada'}</td>
+      <td>${new Date(u.creado_en).toLocaleDateString()}</td>
+      <td>
+        <button onclick="toggleActivoUsuario('${u.id}', ${!u.activo})">${u.activo ? 'Desactivar' : 'Reactivar'}</button>
+        <button onclick="borrarUsuarioPermanente('${u.id}', '${(u.nombre_completo || 'este usuario').replace(/'/g, "\\'")}')">Borrar permanentemente</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+async function cambiarRol(id, nuevoRol) {
+  await sb.from('perfiles').update({ rol: nuevoRol }).eq('id', id);
+  cargarStats();
+}
+
+async function toggleActivoUsuario(id, nuevoValor) {
+  await sb.from('perfiles').update({ activo: nuevoValor }).eq('id', id);
+  cargarUsuarios();
+}
+
+async function borrarUsuarioPermanente(id, nombre) {
+  const confirmado = confirm(
+    `¿Borrar PERMANENTEMENTE la cuenta de "${nombre}"?\n\n` +
+    `Esto elimina también todo su contenido (preguntas, exámenes, calificaciones). ` +
+    `No se puede deshacer. Si solo quieres suspenderla temporalmente, usa "Desactivar" en vez de esto.`
+  );
+  if (!confirmado) return;
+
+  const { data: { session } } = await sb.auth.getSession();
+  const resp = await fetch(`${BACKEND_URL}/api/admin/usuarios/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  });
+
+  if (!resp.ok) {
+    const detalle = await resp.json().catch(() => ({}));
+    alert(detalle.detail || `No se pudo borrar (${resp.status}).`);
+    return;
+  }
+
+  cargarUsuarios();
+  cargarStats();
+}
+
+async function cargarStats() {
+  const [{ count: usuarios }, { count: profesores }, { count: preguntas }, { count: examenes }] = await Promise.all([
+    sb.from('perfiles').select('*', { count: 'exact', head: true }),
+    sb.from('perfiles').select('*', { count: 'exact', head: true }).eq('rol', 'profesor'),
+    sb.from('preguntas').select('*', { count: 'exact', head: true }),
+    sb.from('examenes').select('*', { count: 'exact', head: true }),
+  ]);
+  document.getElementById('stat-usuarios').textContent = usuarios ?? '—';
+  document.getElementById('stat-profesores').textContent = profesores ?? '—';
+  document.getElementById('stat-preguntas').textContent = preguntas ?? '—';
+  document.getElementById('stat-examenes').textContent = examenes ?? '—';
+}
+
+async function cargarClave() {
+  const { data, error } = await sb.from('configuracion_sistema').select('valor').eq('clave', 'clave_maestro').single();
+  if (!error && data) document.getElementById('input-clave').value = data.valor;
+}
+
+async function guardarClave() {
+  const valor = document.getElementById('input-clave').value;
+  const { error } = await sb.from('configuracion_sistema').update({ valor }).eq('clave', 'clave_maestro');
+  const msgEl = document.getElementById('clave-msg');
+  msgEl.textContent = error ? error.message : 'Clave actualizada.';
+  msgEl.className = error ? 'error' : '';
+  msgEl.style.display = 'block';
+}
+
+async function cargarPreguntas() {
+  // Trae también el nombre del maestro dueño de cada pregunta.
+  const { data, error } = await sb
+    .from('preguntas')
+    .select('id, pregunta, categoria, dificultad, activo, perfiles(nombre_completo)')
+    .order('creado_en', { ascending: false });
+
+  const tbody = document.querySelector('#tabla-preguntas-global tbody');
+  tbody.innerHTML = '';
+  if (error) { console.error(error); return; }
+
+  data.forEach(p => {
+    const tr = document.createElement('tr');
+    if (!p.activo) tr.className = 'inactivo';
+    const dueño = p.perfiles?.nombre_completo || '(desconocido)';
+    tr.innerHTML = `<td>${p.pregunta} <span class="nota">— de ${dueño}</span></td><td>${p.categoria}</td><td>${p.dificultad}</td>
+      <td>${p.activo ? 'Activa' : 'Desactivada'}</td>
+      <td>
+        <button onclick="toggleActivo('${p.id}', ${!p.activo})">${p.activo ? 'Desactivar' : 'Reactivar'}</button>
+        <button onclick="borrarPreguntaGlobal('${p.id}')">Borrar</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+async function toggleActivo(id, nuevoValor) {
+  await sb.from('preguntas').update({ activo: nuevoValor }).eq('id', id);
+  cargarPreguntas();
+}
+
+async function borrarPreguntaGlobal(id) {
+  await sb.from('preguntas').delete().eq('id', id);
+  cargarPreguntas();
+  cargarStats();
+}
+</script>
+</body>
+</html>

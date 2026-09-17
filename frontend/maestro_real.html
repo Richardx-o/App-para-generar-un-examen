@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Panel del Maestro (conectado a Supabase)</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  body { font-family: sans-serif; max-width: 700px; margin: 20px auto; padding: 0 10px; }
+  fieldset { margin-bottom: 25px; }
+  label { display: block; margin-top: 8px; }
+  input, select { display: block; margin-top: 2px; margin-bottom: 8px; }
+  table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+  th, td { border: 1px solid #999; padding: 6px; text-align: left; font-size: 14px; }
+  button { padding: 6px 12px; margin-top: 8px; cursor: pointer; }
+  .nota { color: #555; font-size: 13px; }
+  .error { color: red; }
+  #panel-maestro { display: none; }
+</style>
+</head>
+
+<link rel="icon" type="image/png" href="Imagenes/Logo.webp">
+
+<body>
+
+<h1>Panel del Maestro</h1>
+
+<p id="verificando" class="nota">Verificando sesión…</p>
+<p id="acceso-denegado" class="error" style="display:none;">
+  Esta cuenta no tiene rol de maestro. <a href="index.html">Volver al inicio</a>.
+</p>
+
+<div id="panel-maestro">
+  <p><span id="sesion-info"></span> — <button onclick="cerrarSesion()">Cerrar sesión</button></p>
+
+
+  <fieldset>
+    <legend><b>1. Mi banco de preguntas</b></legend>
+    <form id="form-pregunta">
+      <label>Pregunta <input type="text" id="p-pregunta" required style="width:100%"></label>
+      <label>Opción A <input type="text" id="p-a" required></label>
+      <label>Opción B <input type="text" id="p-b" required></label>
+      <label>Opción C <input type="text" id="p-c" required></label>
+      <label>Opción D <input type="text" id="p-d" required></label>
+      <label>Respuesta correcta
+        <select id="p-correcta"><option>A</option><option>B</option><option>C</option><option>D</option></select>
+      </label>
+      <label>Dificultad
+        <select id="p-dificultad"><option value="facil">Fácil</option><option value="media">Media</option><option value="dificil">Difícil</option></select>
+      </label>
+      <label>Categoría <input type="text" id="p-categoria" value="circuitos"></label>
+      <button type="submit">Agregar a mi banco</button>
+    </form>
+    <p id="pregunta-error" class="error" style="display:none;"></p>
+    <table id="tabla-preguntas">
+      <thead><tr><th>Pregunta</th><th>Correcta</th><th>Dificultad</th><th>Categoría</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </fieldset>
+
+  <fieldset>
+    <legend><b>2. Generar examen aleatorio de mi banco</b></legend>
+    <form id="form-examen">
+      <label>Título <input type="text" id="e-titulo" value="Examen de circuitos" required></label>
+      <label>Categoría (vacío = todas) <input type="text" id="e-categoria" value="circuitos"></label>
+      <label>Dificultad
+        <select id="e-dificultad"><option value="">Todas</option><option value="facil">Fácil</option><option value="media">Media</option><option value="dificil">Difícil</option></select>
+      </label>
+      <label>Cantidad <input type="number" id="e-cantidad" value="5" min="1"></label>
+      <button type="submit">Generar examen (en línea)</button>
+      <button type="button" onclick="descargarExamenPDF()">Descargar examen (PDF para imprimir)</button>
+    </form>
+    <p id="examen-error" class="error" style="display:none;"></p>
+    <p id="examen-exito" style="display:none;"></p>
+  </fieldset>
+
+  <fieldset>
+    <legend><b>3. Historial de mis exámenes</b></legend>
+    <button onclick="cargarHistorial()">Actualizar historial</button>
+    <table id="tabla-historial">
+      <thead><tr><th>Título</th><th>Código</th><th>Creado</th><th>Alumnos entregados</th><th>Promedio</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </fieldset>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://qnrkvnnuyfirrohnmzoe.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_Y9O5EuZiuUAZ8l0QybWkLQ_Y4by6uhb';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+// Ajusta esto si tu backend corre en otro host/puerto.
+const BACKEND_URL = 'http://localhost:8001';
+
+let usuarioActual = null;
+
+async function continuarComoMaestro(usuario) {
+  const { data: perfil, error: errorPerfil } = await sb.from('perfiles').select('rol, nombre_completo').eq('id', usuario.id).single();
+  document.getElementById('verificando').style.display = 'none';
+
+  if (errorPerfil || !perfil || (perfil.rol !== 'profesor' && perfil.rol !== 'admin')) {
+    document.getElementById('acceso-denegado').style.display = 'block';
+    return;
+  }
+
+  usuarioActual = usuario;
+  document.getElementById('sesion-info').textContent = `Conectado como ${usuario.email}`;
+  document.getElementById('panel-maestro').style.display = 'block';
+  cargarBanco();
+  cargarHistorial();
+}
+
+async function cerrarSesion() {
+  await sb.auth.signOut();
+  location.href = 'index.html';
+}
+
+// El login vive solo en index.html. Aquí solo comprobamos si ya existe
+// una sesión (compartida por estar en el mismo origen http://localhost:5500);
+// si no hay ninguna, no tiene caso mostrar nada de este panel.
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    await continuarComoMaestro(session.user);
+  } else {
+    location.href = 'index.html';
+  }
+})();
+
+async function cargarBanco() {
+  const { data, error } = await sb.from('preguntas').select('*').eq('creado_por', usuarioActual.id).order('creado_en', { ascending: false });
+  const tbody = document.querySelector('#tabla-preguntas tbody');
+  tbody.innerHTML = '';
+  if (error) { console.error(error); return; }
+  data.forEach(p => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${p.pregunta}</td><td>${p.respuesta_correcta}</td><td>${p.dificultad}</td><td>${p.categoria}</td>
+      <td><button onclick="borrarPregunta('${p.id}')">Borrar</button></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+async function borrarPregunta(id) {
+  await sb.from('preguntas').delete().eq('id', id);
+  cargarBanco();
+}
+
+document.getElementById('form-pregunta').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const errorEl = document.getElementById('pregunta-error');
+  errorEl.style.display = 'none';
+
+  const { error } = await sb.from('preguntas').insert({
+    pregunta: document.getElementById('p-pregunta').value,
+    opcion_a: document.getElementById('p-a').value,
+    opcion_b: document.getElementById('p-b').value,
+    opcion_c: document.getElementById('p-c').value,
+    opcion_d: document.getElementById('p-d').value,
+    respuesta_correcta: document.getElementById('p-correcta').value,
+    dificultad: document.getElementById('p-dificultad').value,
+    categoria: document.getElementById('p-categoria').value,
+    creado_por: usuarioActual.id,
+  });
+
+  if (error) { errorEl.textContent = error.message; errorEl.style.display = 'block'; return; }
+  e.target.reset();
+  cargarBanco();
+});
+
+document.getElementById('form-examen').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const errorEl = document.getElementById('examen-error');
+  const exitoEl = document.getElementById('examen-exito');
+  errorEl.style.display = 'none';
+  exitoEl.style.display = 'none';
+
+  const categoria = document.getElementById('e-categoria').value.trim() || null;
+  const dificultad = document.getElementById('e-dificultad').value || null;
+  const cantidad = parseInt(document.getElementById('e-cantidad').value, 10);
+
+  const { data: examenId, error } = await sb.rpc('crear_examen_completo', {
+    p_titulo: document.getElementById('e-titulo').value,
+    p_categoria: categoria,
+    p_dificultad: dificultad,
+    p_cantidad: cantidad,
+  });
+
+  if (error) { errorEl.textContent = error.message; errorEl.style.display = 'block'; return; }
+
+  const { data: examen } = await sb.from('examenes').select('codigo_acceso').eq('id', examenId).single();
+  exitoEl.textContent = `Examen creado. Código de acceso para tus alumnos: ${examen.codigo_acceso}`;
+  exitoEl.style.display = 'block';
+  cargarHistorial();
+});
+
+async function descargarExamenPDF() {
+  const errorEl = document.getElementById('examen-error');
+  errorEl.style.display = 'none';
+
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { errorEl.textContent = 'Sesión expirada, vuelve a iniciar sesión.'; errorEl.style.display = 'block'; return; }
+
+  const categoria = document.getElementById('e-categoria').value.trim();
+  const dificultad = document.getElementById('e-dificultad').value;
+  const cantidad = document.getElementById('e-cantidad').value;
+
+  const params = new URLSearchParams({ cantidad });
+  if (categoria) params.set('categoria', categoria);
+  if (dificultad) params.set('dificultad', dificultad);
+
+  const resp = await fetch(`${BACKEND_URL}/api/examenes/generar?${params}`, {
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  });
+
+  if (!resp.ok) {
+    const detalle = await resp.json().catch(() => ({}));
+    errorEl.textContent = detalle.detail || `Error al generar el PDF (${resp.status}).`;
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  const blob = await resp.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'examen.zip';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function cargarHistorial() {
+  const { data: examenes, error } = await sb.from('examenes').select('*').eq('creado_por', usuarioActual.id).order('creado_en', { ascending: false });
+  const tbody = document.querySelector('#tabla-historial tbody');
+  tbody.innerHTML = '';
+  if (error) { console.error(error); return; }
+
+  for (const ex of examenes) {
+    const { data: intentos } = await sb.from('intentos_examen').select('calificacion').eq('examen_id', ex.id).eq('estado', 'entregado');
+    const total = intentos ? intentos.length : 0;
+    const promedio = total > 0 ? Math.round(intentos.reduce((s, i) => s + Number(i.calificacion), 0) / total) : '—';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${ex.titulo}</td><td>${ex.codigo_acceso}</td><td>${new Date(ex.creado_en).toLocaleString()}</td><td>${total}</td><td>${promedio}${total>0?'%':''}</td>`;
+    tbody.appendChild(tr);
+  }
+}
+</script>
+</body>
+</html>

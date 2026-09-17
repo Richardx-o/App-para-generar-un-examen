@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Generador de Exámenes</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter",
+      "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .letter-tight { letter-spacing: -0.02em; }
+
+  /* ===== Animaciones de scroll, estilo apple.com ===== */
+  .reveal {
+    opacity: 0;
+    transform: translateY(28px);
+    transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    transition-delay: var(--reveal-delay, 0ms);
+  }
+  .reveal.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .reveal-scale {
+    opacity: 0;
+    transform: translateY(20px) scale(0.97);
+    transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+    transition-delay: var(--reveal-delay, 0ms);
+  }
+  .reveal-scale.is-visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  /* Respeta a quien prefiere menos movimiento en pantalla */
+  @media (prefers-reduced-motion: reduce) {
+    .reveal, .reveal-scale {
+      opacity: 1 !important;
+      transform: none !important;
+      transition: none !important;
+    }
+  }
+</style>
+</head>
+
+<link rel="icon" type="image/png" href="Imagenes/Logo.webp">
+
+<body class="bg-white text-gray-900">
+
+  <!-- ============ NAV ============ -->
+  <header class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
+    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+      <a href="#" class="flex items-center gap-2 font-semibold text-lg letter-tight">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0066CC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="16" rx="2"/>
+          <path d="M7 9h10M7 13h6"/>
+        </svg>
+        Generador de Exámenes
+      </a>
+
+      <nav class="hidden md:flex items-center gap-8 text-sm text-gray-600">
+        <a href="#como-funciona" class="hover:text-gray-900 transition">Cómo funciona</a>
+        <a href="#funciones" class="hover:text-gray-900 transition">Funciones</a>
+        <a href="#demo" class="hover:text-gray-900 transition">Demo</a>
+      </nav>
+
+      <div class="flex items-center gap-4">
+        <a href="#demo" id="nav-login-link" class="hidden sm:block text-sm text-gray-600 hover:text-gray-900 transition">Iniciar sesión</a>
+        <a href="#demo" class="text-sm font-medium text-white bg-[#0066CC] hover:bg-[#0055AD] transition-colors px-4 py-2 rounded-full">
+          Comenzar gratis
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ HERO ============ -->
+  <section class="max-w-6xl mx-auto px-6 pt-20 pb-16 text-center">
+    <h1 class="reveal text-5xl sm:text-6xl font-semibold letter-tight leading-[1.05] max-w-3xl mx-auto" style="--reveal-delay:0ms;">
+      Exámenes nuevos, listos para imprimir, en segundos.
+    </h1>
+    <p class="reveal mt-6 text-lg sm:text-xl text-gray-500 max-w-2xl mx-auto" style="--reveal-delay:120ms;">
+      Elige la dificultad, deja que el sistema mezcle las preguntas y
+      descarga la hoja del alumno y la clave del maestro — sin repetir
+      un examen nunca más.
+    </p>
+    <div class="reveal mt-9 flex items-center justify-center gap-4" style="--reveal-delay:220ms;">
+      <a href="#demo" class="text-sm font-medium text-white bg-[#0066CC] hover:bg-[#0055AD] transition-colors px-6 py-3 rounded-full">
+        Probar el generador
+      </a>
+      <a href="#como-funciona" class="text-sm font-medium text-gray-700 hover:text-gray-900 transition px-6 py-3">
+        Ver cómo funciona ↓
+      </a>
+    </div>
+
+    <!-- Mockup del producto real: la pregunta con la respuesta correcta en verde -->
+    <div class="reveal-scale mt-16 max-w-2xl mx-auto" style="--reveal-delay:340ms;">
+      <div class="rounded-[28px] border-[3px] border-gray-900 shadow-xl bg-white overflow-hidden text-left">
+        <div class="flex items-center gap-2 px-5 py-3.5 border-b border-gray-100 bg-gray-50">
+          <span class="w-2.5 h-2.5 rounded-full bg-[#FF5F57]"></span>
+          <span class="w-2.5 h-2.5 rounded-full bg-[#FEBC2E]"></span>
+          <span class="w-2.5 h-2.5 rounded-full bg-[#28C840]"></span>
+          <span class="ml-3 text-xs text-gray-400">examen_maestro.pdf</span>
+        </div>
+        <div class="p-8">
+          <p class="text-xs font-medium text-gray-400 mb-1">Pregunta 4</p>
+          <p class="font-medium text-gray-900 mb-4">¿Cuál es el símbolo químico del oro?</p>
+          <div class="space-y-2 text-sm">
+            <div class="px-4 py-2.5 rounded-lg border border-gray-200 text-gray-600">A) Ag</div>
+            <div class="px-4 py-2.5 rounded-lg border border-green-200 bg-green-50 text-green-700 font-medium flex items-center justify-between">
+              B) Au
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="px-4 py-2.5 rounded-lg border border-gray-200 text-gray-600">C) Fe</div>
+            <div class="px-4 py-2.5 rounded-lg border border-gray-200 text-gray-600">D) Pb</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CÓMO FUNCIONA ============ -->
+  <section id="como-funciona" class="bg-[#F5F5F7] py-24">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="reveal text-center max-w-2xl mx-auto mb-16">
+        <h2 class="text-4xl font-semibold letter-tight">Cómo funciona</h2>
+        <p class="mt-4 text-lg text-gray-500">
+          Tres pasos, un archivo listo para repartir en clase.
+        </p>
+      </div>
+
+      <div class="grid sm:grid-cols-3 gap-8">
+        <div class="reveal text-center" style="--reveal-delay:0ms;">
+          <div class="w-12 h-12 mx-auto rounded-full bg-white shadow-sm flex items-center justify-center mb-5">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0066CC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          </div>
+          <h3 class="font-semibold text-gray-900 mb-2">1. Elige categoría y dificultad</h3>
+          <p class="text-sm text-gray-500 leading-relaxed">
+            Filtra tu banco de preguntas por tema — matemáticas, historia,
+            ciencia — y por nivel: fácil, media o difícil.
+          </p>
+        </div>
+
+        <div class="reveal text-center" style="--reveal-delay:120ms;">
+          <div class="w-12 h-12 mx-auto rounded-full bg-white shadow-sm flex items-center justify-center mb-5">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0066CC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+          </div>
+          <h3 class="font-semibold text-gray-900 mb-2">2. Genera con un clic</h3>
+          <p class="text-sm text-gray-500 leading-relaxed">
+            El sistema mezcla las opciones A, B, C y D en cada pregunta,
+            así ningún examen sale igual dos veces.
+          </p>
+        </div>
+
+        <div class="reveal text-center" style="--reveal-delay:240ms;">
+          <div class="w-12 h-12 mx-auto rounded-full bg-white shadow-sm flex items-center justify-center mb-5">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0066CC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </div>
+          <h3 class="font-semibold text-gray-900 mb-2">3. Descarga ambos PDF</h3>
+          <p class="text-sm text-gray-500 leading-relaxed">
+            Recibes la hoja del alumno y la clave del maestro con las
+            respuestas resaltadas en verde, listas para imprimir.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FUNCIONES (alternando texto/mockup) ============ -->
+  <section id="funciones" class="max-w-6xl mx-auto px-6 py-24 space-y-28">
+
+    <!-- Feature 1 -->
+    <div class="grid md:grid-cols-2 gap-12 items-center">
+      <div class="reveal" style="--reveal-delay:0ms;">
+        <h3 class="text-3xl font-semibold letter-tight mb-4">
+          Ningún examen se repite
+        </h3>
+        <p class="text-gray-500 leading-relaxed mb-6">
+          Cada vez que generas un examen, las preguntas se eligen al azar
+          de tu banco y las opciones A–D se barajan de nuevo. Ideal para
+          grupos numerosos o exámenes de recuperación.
+        </p>
+        <ul class="space-y-3 text-sm text-gray-600">
+          <li class="flex items-center gap-3">
+            <span class="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+            Selección aleatoria directa en la base de datos
+          </li>
+          <li class="flex items-center gap-3">
+            <span class="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+            Opciones mezcladas en cada generación
+          </li>
+        </ul>
+      </div>
+      <div class="reveal-scale rounded-[24px] border-[3px] border-gray-900 shadow-xl bg-white overflow-hidden" style="--reveal-delay:150ms;">
+        <div class="flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-gray-50">
+          <span class="w-2.5 h-2.5 rounded-full bg-[#FF5F57]"></span>
+          <span class="w-2.5 h-2.5 rounded-full bg-[#FEBC2E]"></span>
+          <span class="w-2.5 h-2.5 rounded-full bg-[#28C840]"></span>
+        </div>
+        <div class="p-8 space-y-3">
+          <div class="h-3 w-24 bg-gray-200 rounded-full"></div>
+          <div class="h-3 w-full bg-gray-100 rounded-full"></div>
+          <div class="h-3 w-5/6 bg-gray-100 rounded-full"></div>
+          <div class="flex gap-2 pt-3">
+            <span class="text-xs px-3 py-1.5 rounded-full bg-blue-50 text-[#0066CC] font-medium">A</span>
+            <span class="text-xs px-3 py-1.5 rounded-full bg-gray-100 text-gray-500">B</span>
+            <span class="text-xs px-3 py-1.5 rounded-full bg-gray-100 text-gray-500">C</span>
+            <span class="text-xs px-3 py-1.5 rounded-full bg-gray-100 text-gray-500">D</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feature 2 -->
+    <div class="grid md:grid-cols-2 gap-12 items-center">
+      <div class="reveal-scale order-2 md:order-1 rounded-[24px] border-[3px] border-gray-900 shadow-xl bg-white overflow-hidden" style="--reveal-delay:0ms;">
+        <div class="flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-gray-50">
+          <span class="w-2.5 h-2.5 rounded-full bg-[#FF5F57]"></span>
+          <span class="w-2.5 h-2.5 rounded-full bg-[#FEBC2E]"></span>
+          <span class="w-2.5 h-2.5 rounded-full bg-[#28C840]"></span>
+        </div>
+        <div class="p-6 space-y-4">
+          <div class="rounded-xl border border-gray-100 p-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0066CC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <span class="text-sm text-gray-700">examen_alumno.pdf</span>
+            </div>
+            <span class="text-xs text-gray-400">1.2 MB</span>
+          </div>
+          <div class="rounded-xl border border-gray-100 p-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <span class="text-sm text-gray-700">examen_maestro.pdf</span>
+            </div>
+            <span class="text-xs text-gray-400">1.3 MB</span>
+          </div>
+        </div>
+      </div>
+      <div class="reveal order-1 md:order-2" style="--reveal-delay:150ms;">
+        <h3 class="text-3xl font-semibold letter-tight mb-4">
+          Dos versiones, un solo clic
+        </h3>
+        <p class="text-gray-500 leading-relaxed mb-6">
+          Obtén siempre la hoja limpia para repartir a tus alumnos y la
+          versión con las respuestas correctas resaltadas en verde para ti,
+          empaquetadas juntas en un mismo archivo.
+        </p>
+        <ul class="space-y-3 text-sm text-gray-600">
+          <li class="flex items-center gap-3">
+            <span class="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+            Generados en memoria, sin archivos temporales
+          </li>
+          <li class="flex items-center gap-3">
+            <span class="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+            Listos para imprimir o compartir digitalmente
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Feature 3 -->
+    <div class="grid md:grid-cols-2 gap-12 items-center">
+      <div class="reveal" style="--reveal-delay:0ms;">
+        <h3 class="text-3xl font-semibold letter-tight mb-4">
+          Aguanta muchos maestros a la vez
+        </h3>
+        <p class="text-gray-500 leading-relaxed mb-6">
+          Construido sobre FastAPI y Docker: varios profesores pueden
+          generar exámenes al mismo tiempo sin que el sistema se congele
+          ni se cruce la información de nadie.
+        </p>
+        <ul class="space-y-3 text-sm text-gray-600">
+          <li class="flex items-center gap-3">
+            <span class="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+            Peticiones simultáneas sin bloqueos
+          </li>
+          <li class="flex items-center gap-3">
+            <span class="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+            Cada descarga con un identificador único
+          </li>
+        </ul>
+      </div>
+      <div class="reveal-scale rounded-[24px] border-[3px] border-gray-900 shadow-xl bg-white overflow-hidden" style="--reveal-delay:150ms;">
+        <div class="flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-gray-50">
+          <span class="w-2.5 h-2.5 rounded-full bg-[#FF5F57]"></span>
+          <span class="w-2.5 h-2.5 rounded-full bg-[#FEBC2E]"></span>
+          <span class="w-2.5 h-2.5 rounded-full bg-[#28C840]"></span>
+        </div>
+        <div class="p-8">
+          <div class="flex items-center justify-between text-xs text-gray-400 mb-4">
+            <span>Peticiones activas</span>
+            <span class="text-green-600 font-medium">● en línea</span>
+          </div>
+          <div class="space-y-2">
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-gray-600">Prof. Martínez</span>
+              <span class="text-xs text-gray-400">200 OK</span>
+            </div>
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-gray-600">Prof. Rivera</span>
+              <span class="text-xs text-gray-400">200 OK</span>
+            </div>
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-gray-600">Prof. Gómez</span>
+              <span class="text-xs text-gray-400">200 OK</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ============ DEMO (formulario, visual por ahora) ============ -->
+  <section id="demo" class="bg-[#F5F5F7] py-24">
+    <div class="max-w-[600px] mx-auto px-6">
+      <div class="reveal text-center mb-10">
+        <h2 class="text-4xl font-semibold letter-tight text-gray-900">
+          Pruébalo tú mismo
+        </h2>
+        <p class="mt-3 text-lg text-gray-500">
+          Crea un examen personalizado en segundos.
+        </p>
+      </div>
+
+      <!-- ===== Bloque de acceso: se muestra cuando NO hay sesión iniciada ===== -->
+      <div id="auth-gate" class="reveal-scale bg-white rounded-2xl shadow-sm p-10" style="--reveal-delay:150ms;">
+        <div class="flex gap-6 mb-8 border-b border-gray-100">
+          <button type="button" id="tab-login" class="pb-3 text-sm font-medium border-b-2 border-[#0066CC] text-[#0066CC]">
+            Iniciar sesión
+          </button>
+          <button type="button" id="tab-signup" class="pb-3 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-600 transition">
+            Crear cuenta
+          </button>
+        </div>
+
+        <!-- Formulario de login -->
+        <form id="login-form" class="space-y-5">
+          <div>
+            <label for="login-email" class="block text-sm font-medium text-gray-700 mb-2">Correo</label>
+            <input type="email" id="login-email" required
+              class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50
+                     focus:outline-none focus:ring-2 focus:ring-[#0066CC] focus:border-transparent transition" />
+          </div>
+          <div>
+            <label for="login-password" class="block text-sm font-medium text-gray-700 mb-2">Contraseña</label>
+            <input type="password" id="login-password" required
+              class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50
+                     focus:outline-none focus:ring-2 focus:ring-[#0066CC] focus:border-transparent transition" />
+          </div>
+          <button type="submit" id="login-btn"
+            class="w-full py-3 rounded-xl bg-[#0066CC] text-white font-medium
+                   hover:bg-[#0055AD] transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+            Iniciar sesión
+          </button>
+          <p id="login-error" class="hidden text-sm text-red-600 text-center"></p>
+        </form>
+
+        <!-- Formulario de registro (oculto hasta elegir la pestaña "Crear cuenta") -->
+        <form id="signup-form" class="hidden space-y-5">
+          <div>
+            <label for="signup-email" class="block text-sm font-medium text-gray-700 mb-2">Correo</label>
+            <input type="email" id="signup-email" required
+              class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50
+                     focus:outline-none focus:ring-2 focus:ring-[#0066CC] focus:border-transparent transition" />
+          </div>
+          <div>
+            <label for="signup-password" class="block text-sm font-medium text-gray-700 mb-2">Contraseña</label>
+            <input type="password" id="signup-password" required minlength="6"
+              class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50
+                     focus:outline-none focus:ring-2 focus:ring-[#0066CC] focus:border-transparent transition" />
+            <p class="mt-2 text-xs text-gray-400">Mínimo 6 caracteres.</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Me estoy registrando como</label>
+            <div class="grid grid-cols-2 gap-3">
+              <label class="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-gray-200
+                             bg-gray-50 cursor-pointer has-[:checked]:border-[#0066CC] has-[:checked]:bg-blue-50 transition">
+                <input type="radio" name="signup-rol" value="alumno" checked class="accent-[#0066CC]" />
+                <span class="text-sm font-medium text-gray-700">Alumno</span>
+              </label>
+              <label class="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-gray-200
+                             bg-gray-50 cursor-pointer has-[:checked]:border-[#0066CC] has-[:checked]:bg-blue-50 transition">
+                <input type="radio" name="signup-rol" value="profesor" class="accent-[#0066CC]" />
+                <span class="text-sm font-medium text-gray-700">Maestro</span>
+              </label>
+            </div>
+          </div>
+          <div id="clave-maestro-wrapper" class="hidden">
+            <label for="signup-clave-maestro" class="block text-sm font-medium text-gray-700 mb-2">
+              Clave de maestro
+            </label>
+            <input type="password" id="signup-clave-maestro"
+              class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50
+                     focus:outline-none focus:ring-2 focus:ring-[#0066CC] focus:border-transparent transition" />
+            <p class="mt-2 text-xs text-gray-400">Pídesela a quien administra el sistema.</p>
+          </div>
+          <button type="submit" id="signup-btn"
+            class="w-full py-3 rounded-xl bg-[#0066CC] text-white font-medium
+                   hover:bg-[#0055AD] transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+            Crear cuenta
+          </button>
+          <p id="signup-error" class="hidden text-sm text-red-600 text-center"></p>
+          <p id="signup-success" class="hidden text-sm text-green-600 text-center"></p>
+        </form>
+      </div>
+
+      <!-- ===== Post-login: redirige a cada quien a su panel correcto ===== -->
+      <div id="generador-wrapper" class="hidden">
+        <div class="flex items-center justify-between mb-4 px-1">
+          <span id="user-email" class="text-sm text-gray-500"></span>
+          <button id="logout-btn" class="text-sm text-gray-500 hover:text-gray-900 transition">Cerrar sesión</button>
+        </div>
+
+        <div class="reveal-scale bg-white rounded-2xl shadow-sm p-10 text-center" style="--reveal-delay:150ms;">
+          <p id="redireccion-cargando" class="text-gray-500">Cargando tu panel…</p>
+          <div id="redireccion-listo" class="hidden">
+            <p class="text-gray-600 mb-6">Sesión iniciada correctamente. Continúa en tu panel:</p>
+            <a id="link-panel" href="#"
+              class="inline-block px-6 py-3 rounded-xl bg-[#0066CC] text-white font-medium
+                     hover:bg-[#0055AD] transition-colors">
+              Ir a mi panel
+            </a>
+          </div>
+          <p id="redireccion-error" class="hidden text-sm text-red-600 mt-4"></p>
+        </div>
+      </div>
+
+      <p class="text-center text-sm text-gray-400 mt-6">
+        El examen se descargará como PDF, listo para imprimir.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ CTA FINAL ============ -->
+  <section class="bg-[#0066CC] py-20">
+    <div class="reveal max-w-3xl mx-auto px-6 text-center">
+      <h2 class="text-4xl sm:text-5xl font-semibold letter-tight text-white">
+        Deja de escribir exámenes a mano
+      </h2>
+      <p class="mt-4 text-lg text-blue-100">
+        Arma tu banco de preguntas una vez y genera exámenes distintos
+        cada vez que los necesites.
+      </p>
+      <a href="#demo" class="inline-block mt-8 text-sm font-medium text-[#0066CC] bg-white hover:bg-blue-50 transition-colors px-6 py-3 rounded-full">
+        Empezar ahora
+      </a>
+    </div>
+  </section>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="bg-white pt-16 pb-8">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="grid sm:grid-cols-2 md:grid-cols-4 gap-10">
+        <div>
+          <a href="#" class="flex items-center gap-2 font-semibold letter-tight mb-3">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0066CC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="16" rx="2"/>
+              <path d="M7 9h10M7 13h6"/>
+            </svg>
+            Generador de Exámenes
+          </a>
+          <p class="text-sm text-gray-500 leading-relaxed">
+            Preguntas aleatorias, opciones mezcladas y PDFs listos para
+            imprimir, sin repetir un examen nunca más.
+          </p>
+        </div>
+
+        <div>
+          <p class="text-sm font-medium text-gray-900 mb-3">Producto</p>
+          <ul class="space-y-2 text-sm text-gray-500">
+            <li><a href="#como-funciona" class="hover:text-gray-900 transition">Cómo funciona</a></li>
+            <li><a href="#funciones" class="hover:text-gray-900 transition">Funciones</a></li>
+            <li><a href="#demo" class="hover:text-gray-900 transition">Demo</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <p class="text-sm font-medium text-gray-900 mb-3">Empresa</p>
+          <ul class="space-y-2 text-sm text-gray-500">
+            <li><a href="#" class="hover:text-gray-900 transition">Acerca de</a></li>
+            <li><a href="#" class="hover:text-gray-900 transition">Contacto</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <p class="text-sm font-medium text-gray-900 mb-3">Soporte</p>
+          <ul class="space-y-2 text-sm text-gray-500">
+            <li><a href="#" class="hover:text-gray-900 transition">Ayuda</a></li>
+            <li><a href="#" class="hover:text-gray-900 transition">Privacidad</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="border-t border-gray-100 mt-12 pt-6 text-center text-xs text-gray-400">
+        © 2026 Generador de Exámenes. Todos los derechos reservados.
+      </div>
+    </div>
+  </footer>
+  <script>
+    // Animación de aparición al hacer scroll (mismo patrón que apple.com):
+    // cada elemento con clase .reveal / .reveal-scale se queda invisible
+    // hasta que entra en el viewport, y entonces sube y aparece con easing.
+    // El hero también usa este mismo observer: como ya está visible al
+    // cargar la página, se anima de inmediato con su propio stagger.
+    const revealItems = document.querySelectorAll('.reveal, .reveal-scale');
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          observer.unobserve(entry.target); // se anima una sola vez
+        }
+      });
+    }, {
+      threshold: 0.15,
+      rootMargin: '0px 0px -60px 0px'
+    });
+
+    revealItems.forEach((el) => observer.observe(el));
+  </script>
+
+  <script>
+    // Cliente de Supabase (publishable key: segura de exponer, el acceso
+    // real lo controla RLS).
+    const SUPABASE_URL = 'https://qnrkvnnuyfirrohnmzoe.supabase.co';
+    const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_Y9O5EuZiuUAZ8l0QybWkLQ_Y4by6uhb';
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+    // Cada panel real vive en su propio archivo HTML — ajusta estos nombres
+    // si los guardaste con otro nombre en tu carpeta frontend/.
+    const PANEL_POR_ROL = {
+      profesor: { archivo: 'maestro_real.html', texto: 'Ir a mi panel de maestro' },
+      admin:    { archivo: 'admin.html',        texto: 'Ir al panel de administrador' },
+      alumno:   { archivo: 'alumno_real.html',  texto: 'Ir a mi panel de alumno' },
+    };
+
+    async function mostrarPanelSegunRol(usuario) {
+      const cargando = document.getElementById('redireccion-cargando');
+      const listo = document.getElementById('redireccion-listo');
+      const errorEl = document.getElementById('redireccion-error');
+      const link = document.getElementById('link-panel');
+
+      cargando.classList.remove('hidden');
+      listo.classList.add('hidden');
+      errorEl.classList.add('hidden');
+
+      const { data: perfil, error } = await sb.from('perfiles').select('rol').eq('id', usuario.id).single();
+
+      cargando.classList.add('hidden');
+
+      if (error || !perfil || !PANEL_POR_ROL[perfil.rol]) {
+        errorEl.textContent = 'No se pudo determinar tu panel. Contacta al administrador.';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      const { archivo, texto } = PANEL_POR_ROL[perfil.rol];
+      link.href = archivo;
+      link.textContent = texto;
+      listo.classList.remove('hidden');
+    }
+
+    // ===== Autenticación: login, registro y control de visibilidad =====
+    const authGate = document.getElementById('auth-gate');
+    const generadorWrapper = document.getElementById('generador-wrapper');
+    const userEmailEl = document.getElementById('user-email');
+
+    // Reacciona a cualquier cambio de sesión: login, logout, o sesión
+    // recordada de una visita anterior (Supabase la guarda sola).
+    sb.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        authGate.classList.add('hidden');
+        generadorWrapper.classList.remove('hidden');
+        userEmailEl.textContent = session.user.email;
+        mostrarPanelSegunRol(session.user);
+      } else {
+        authGate.classList.remove('hidden');
+        generadorWrapper.classList.add('hidden');
+      }
+    });
+
+    // --- Tabs: Iniciar sesión / Crear cuenta ---
+    const tabLogin = document.getElementById('tab-login');
+    const tabSignup = document.getElementById('tab-signup');
+    const loginForm = document.getElementById('login-form');
+    const signupForm = document.getElementById('signup-form');
+
+    function mostrarTab(activa) {
+      const esLogin = activa === 'login';
+      loginForm.classList.toggle('hidden', !esLogin);
+      signupForm.classList.toggle('hidden', esLogin);
+      tabLogin.classList.toggle('border-[#0066CC]', esLogin);
+      tabLogin.classList.toggle('text-[#0066CC]', esLogin);
+      tabLogin.classList.toggle('border-transparent', !esLogin);
+      tabLogin.classList.toggle('text-gray-400', !esLogin);
+      tabSignup.classList.toggle('border-[#0066CC]', !esLogin);
+      tabSignup.classList.toggle('text-[#0066CC]', !esLogin);
+      tabSignup.classList.toggle('border-transparent', esLogin);
+      tabSignup.classList.toggle('text-gray-400', esLogin);
+    }
+    tabLogin.addEventListener('click', () => mostrarTab('login'));
+    tabSignup.addEventListener('click', () => mostrarTab('signup'));
+
+    // El link "Iniciar sesión" del nav de arriba baja hasta la sección
+    // demo (por el href="#demo") y además fuerza la pestaña de login,
+    // por si el usuario había dejado abierta la de "Crear cuenta".
+    document.getElementById('nav-login-link').addEventListener('click', () => mostrarTab('login'));
+
+    // --- Login ---
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const loginError = document.getElementById('login-error');
+      const loginBtn = document.getElementById('login-btn');
+      loginError.classList.add('hidden');
+      loginBtn.disabled = true;
+      loginBtn.textContent = 'Entrando…';
+
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        loginError.textContent = 'Correo o contraseña incorrectos.';
+        loginError.classList.remove('hidden');
+      }
+      loginBtn.disabled = false;
+      loginBtn.textContent = 'Iniciar sesión';
+    });
+
+    // --- Mostrar el campo de clave de maestro solo si eligen ese rol ---
+    const claveMaestroWrapper = document.getElementById('clave-maestro-wrapper');
+    document.querySelectorAll('input[name="signup-rol"]').forEach((radio) => {
+      radio.addEventListener('change', (e) => {
+        claveMaestroWrapper.classList.toggle('hidden', e.target.value !== 'profesor');
+      });
+    });
+
+    // --- Registro (el rol final lo valida el servidor, no este JS) ---
+    signupForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const signupError = document.getElementById('signup-error');
+      const signupSuccess = document.getElementById('signup-success');
+      const signupBtn = document.getElementById('signup-btn');
+      signupError.classList.add('hidden');
+      signupSuccess.classList.add('hidden');
+      signupBtn.disabled = true;
+      signupBtn.textContent = 'Creando cuenta…';
+
+      const email = document.getElementById('signup-email').value;
+      const password = document.getElementById('signup-password').value;
+      const rolDeseado = document.querySelector('input[name="signup-rol"]:checked').value;
+      const claveMaestro = document.getElementById('signup-clave-maestro').value;
+
+      // rol_deseado y clave_maestro solo viajan como metadata; el
+      // trigger manejar_nuevo_usuario en Supabase es quien realmente
+      // decide el rol, validando la clave contra configuracion_sistema.
+      const { data, error } = await sb.auth.signUp({
+        email,
+        password,
+        options: { data: { rol_deseado: rolDeseado, clave_maestro: claveMaestro } }
+      });
+
+      if (error) {
+        signupError.textContent = error.message;
+        signupError.classList.remove('hidden');
+      } else if (data.user && !data.session) {
+        // Supabase, por defecto, pide confirmar el correo antes de dejar
+        // entrar — es el comportamiento estándar y seguro de producción.
+        signupSuccess.textContent = 'Cuenta creada. Revisa tu correo para confirmarla antes de iniciar sesión.';
+        signupSuccess.classList.remove('hidden');
+        signupForm.reset();
+      }
+      // Si el proyecto tiene la confirmación de correo desactivada,
+      // data.session ya viene lista y onAuthStateChange te mete solo.
+
+      signupBtn.disabled = false;
+      signupBtn.textContent = 'Crear cuenta';
+    });
+
+    // --- Logout ---
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+      await sb.auth.signOut();
+    });
+  </script>
+
+</body>
+</html>
