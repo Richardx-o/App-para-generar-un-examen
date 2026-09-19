@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mi Perfil</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="estilos.css">
+<script src="tema.js"></script>
+<style>
+  .avatar-grande {
+    width: 88px; height: 88px; border-radius: 50%;
+    background: var(--accent-soft); color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 30px;
+    margin: 0 auto;
+  }
+</style>
+</head>
+<body>
+
+<div id="pantalla-verificando" class="min-h-screen flex items-center justify-center px-4">
+  <p class="text-sm" style="color: var(--text-muted);">Verificando sesión…</p>
+</div>
+
+<div id="pagina-perfil" class="hidden min-h-screen flex flex-col">
+
+  <header class="flex items-center justify-between gap-3 flex-wrap px-4 sm:px-6 py-3 sm:py-4 border-b" style="border-color: var(--border);">
+    <div class="flex items-center gap-2">
+      <div class="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-sm" style="background: var(--accent); color:#1a1206;">E</div>
+      <span class="display font-semibold">Bitácora</span>
+    </div>
+    <div class="flex items-center gap-2 flex-wrap">
+      <button class="theme-toggle" onclick="alternarTema()"></button>
+      <a id="link-volver-panel" href="index.html" class="btn text-sm">← Volver a mi panel</a>
+    </div>
+  </header>
+
+  <main class="flex-1 p-4 sm:p-6 md:p-10">
+    <div class="max-w-4xl mx-auto">
+      <h1 class="text-2xl font-semibold mb-6">Mi perfil</h1>
+
+      <div id="tarjeta-perfil" class="grid md:grid-cols-[280px_1fr] gap-6 hidden">
+
+        <!-- Columna izquierda: identidad -->
+        <div class="card p-6 text-center h-fit">
+          <div class="avatar-grande mb-4" id="avatar-iniciales">–</div>
+          <p id="nombre-mostrado" class="font-semibold mb-1">–</p>
+          <span id="badge-rol" class="badge badge-muted mb-3 inline-block"></span>
+          <p id="correo-mostrado" class="text-xs break-all" style="color: var(--text-muted);"></p>
+        </div>
+
+        <!-- Columna derecha: formulario editable -->
+        <div class="card p-6 sm:p-8">
+          <h2 class="text-sm font-semibold mb-5" style="color: var(--text-muted);">Información de la cuenta</h2>
+          <form id="form-perfil" class="space-y-4 max-w-md">
+            <div>
+              <label class="text-sm block mb-1" style="color: var(--text-muted);">Correo</label>
+              <input type="email" id="p-correo" disabled style="opacity:.6;">
+              <p class="text-xs mt-1" style="color: var(--text-muted);">Es tu usuario de acceso y no se cambia desde aquí.</p>
+            </div>
+
+            <div>
+              <label class="text-sm block mb-1" style="color: var(--text-muted);">Rol</label>
+              <input type="text" id="p-rol" disabled style="opacity:.6;">
+            </div>
+
+            <div>
+              <label class="text-sm block mb-1" style="color: var(--text-muted);">Nombre completo</label>
+              <input type="text" id="p-nombre">
+            </div>
+
+            <div>
+              <label class="text-sm block mb-1" style="color: var(--text-muted);">Matrícula / número de empleado (opcional)</label>
+              <input type="text" id="p-matricula" placeholder="Ej. A01234567">
+            </div>
+
+            <button type="submit" class="btn btn-accent w-full sm:w-auto">Guardar cambios</button>
+            <p id="guardar-error" class="text-sm hidden" style="color: var(--danger);"></p>
+            <p id="guardar-exito" class="text-sm hidden" style="color: var(--success);">Datos guardados.</p>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="mi_perfil.js"></script>
+</body>
+</html>

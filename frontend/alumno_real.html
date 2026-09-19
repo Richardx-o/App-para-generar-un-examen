@@ -2,182 +2,85 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Vista del Alumno (conectado a Supabase)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vista del Alumno</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="estilos.css">
+<script src="tema.js"></script>
 <style>
-  body { font-family: sans-serif; max-width: 650px; margin: 20px auto; padding: 0 10px; }
-  label { display: block; margin-top: 10px; }
-  input { margin-top: 4px; }
-  fieldset { margin-bottom: 20px; }
-  .pregunta { border: 1px solid #999; padding: 10px; margin-bottom: 12px; }
-  .pregunta label { font-weight: normal; margin: 4px 0; }
-  button { padding: 6px 12px; margin-top: 10px; cursor: pointer; }
-  .nota { color: #555; font-size: 13px; }
-  .error { color: red; }
-  #panel-alumno, #pantalla-examen, #pantalla-resultado { display: none; }
+  .aro-calificacion {
+    width: 96px; height: 96px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    border: 4px solid currentColor; margin: 0 auto;
+  }
 </style>
 </head>
-
-<link rel="icon" type="image/png" href="Imagenes/Logo.webp">
-
 <body>
 
-<h1>Vista del Alumno</h1>
-
-<p id="verificando" class="nota">Verificando sesión…</p>
-
-<div id="panel-alumno">
-  <p><span id="sesion-info"></span> — <button onclick="cerrarSesion()">Cerrar sesión</button></p>
-
-  <fieldset id="panel-codigo">
-    <legend><b>Unirme a un examen</b></legend>
-    <label>Código de acceso <input type="text" id="input-codigo"></label>
-    <button onclick="unirseAExamen()">Entrar al examen</button>
-    <p id="codigo-error" class="error" style="display:none;"></p>
-  </fieldset>
-
-  <div id="pantalla-examen">
-    <h2 id="titulo-examen"></h2>
-    <form id="form-respuestas"></form>
-    <button onclick="entregarExamen()">Entregar examen</button>
-    <p id="entrega-error" class="error" style="display:none;"></p>
-  </div>
-
-  <div id="pantalla-resultado">
-    <h2>Resultado</h2>
-    <p>Calificación: <span id="res-calificacion"></span>%</p>
-    <button onclick="descargarResultado()">Descargar resultado (PDF)</button>
-    <p id="descarga-error" class="error" style="display:none;"></p>
-  </div>
+<div id="pantalla-verificando" class="min-h-screen flex items-center justify-center px-4">
+  <p class="text-sm" style="color: var(--text-muted);">Verificando sesión…</p>
 </div>
 
-<script>
-const SUPABASE_URL = 'https://qnrkvnnuyfirrohnmzoe.supabase.co';
-const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_Y9O5EuZiuUAZ8l0QybWkLQ_Y4by6uhb';
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+<div id="panel-alumno" class="hidden min-h-screen flex flex-col">
 
-// Ajusta esto si tu backend corre en otro host/puerto.
-const BACKEND_URL = 'http://localhost:8001';
+  <!-- Encabezado simple, sin sidebar (es un flujo lineal, no varias secciones) -->
+  <header class="flex items-center justify-between gap-3 flex-wrap px-4 sm:px-6 py-3 sm:py-4 border-b" style="border-color: var(--border);">
+    <div class="flex items-center gap-2">
+      <div class="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-sm" style="background: var(--accent); color:#1a1206;">E</div>
+      <span class="display font-semibold">Bitácora</span>
+    </div>
+    <div class="flex items-center gap-2 flex-wrap justify-end">
+      <button class="theme-toggle" onclick="alternarTema()"></button>
+      <a href="mi_perfil.html" class="btn text-sm">Mi perfil</a>
+      <span id="sesion-info" class="text-xs hidden sm:inline" style="color: var(--text-muted);"></span>
+      <button onclick="cerrarSesion()" class="btn text-sm">Cerrar sesión</button>
+    </div>
+  </header>
 
-let usuarioActual = null;
-let intentoActual = null;
-let preguntasActuales = [];
+  <main class="flex-1 flex items-start justify-center p-4 sm:p-6 md:p-10">
+    <div class="w-full max-w-lg">
 
-function continuarComoAlumno(usuario) {
-  usuarioActual = usuario;
-  document.getElementById('verificando').style.display = 'none';
-  document.getElementById('sesion-info').textContent = `Conectado como ${usuario.email}`;
-  document.getElementById('panel-alumno').style.display = 'block';
-}
+      <!-- ---------- Unirse con código ---------- -->
+      <div id="tarjeta-codigo" class="card p-8">
+        <h1 class="text-xl font-semibold mb-1">Unirme a un examen</h1>
+        <p class="text-sm mb-5" style="color: var(--text-muted);">Pídele el código de acceso a tu maestro.</p>
+        <label class="text-sm block mb-4">Código de acceso
+          <input type="text" id="input-codigo" placeholder="Ej. A1B2C3" style="text-transform:uppercase;">
+        </label>
+        <button class="btn btn-accent w-full" onclick="unirseAExamen()">Entrar al examen</button>
+        <p id="codigo-error" class="text-sm mt-3 hidden" style="color: var(--danger);"></p>
+      </div>
 
-async function cerrarSesion() {
-  await sb.auth.signOut();
-  location.href = 'index.html';
-}
+      <!-- ---------- Resolviendo el examen ---------- -->
+      <div id="tarjeta-examen" class="hidden">
+        <div class="flex items-baseline justify-between mb-4">
+          <h1 id="titulo-examen" class="text-xl font-semibold"></h1>
+          <span id="contador-preguntas" class="text-xs" style="color: var(--text-muted);"></span>
+        </div>
+        <form id="form-respuestas"></form>
+        <button class="btn btn-accent w-full mt-2" onclick="entregarExamen()">Entregar examen</button>
+        <p id="entrega-error" class="text-sm mt-3 hidden" style="color: var(--danger);"></p>
+      </div>
 
-// El login vive solo en index.html. Aquí solo comprobamos si ya existe
-// una sesión (compartida por estar en el mismo origen http://localhost:5500);
-// si no hay ninguna, no tiene caso mostrar nada de este panel.
-(async () => {
-  const { data: { session } } = await sb.auth.getSession();
-  if (session) {
-    continuarComoAlumno(session.user);
-  } else {
-    location.href = 'index.html';
-  }
-})();
+      <!-- ---------- Resultado ---------- -->
+      <div id="tarjeta-resultado" class="hidden card p-8 text-center">
+        <h1 class="text-xl font-semibold mb-6">Resultado</h1>
+        <div id="res-aro" class="aro-calificacion mb-4">
+          <span id="res-calificacion" class="text-2xl font-semibold display" style="color: var(--text);"></span>
+        </div>
+        <span id="res-veredicto" class="badge"></span>
+        <button class="btn btn-accent w-full mt-6" onclick="descargarResultado()">Descargar resultado (PDF)</button>
+        <p id="descarga-error" class="text-sm mt-3 hidden" style="color: var(--danger);"></p>
+      </div>
 
-async function unirseAExamen() {
-  const codigo = document.getElementById('input-codigo').value.trim();
-  const errorEl = document.getElementById('codigo-error');
-  errorEl.style.display = 'none';
+    </div>
+  </main>
+</div>
 
-  const { data: intentoId, error } = await sb.rpc('unirse_a_examen', { p_codigo_acceso: codigo });
-  if (error) { errorEl.textContent = error.message; errorEl.style.display = 'block'; return; }
-  intentoActual = intentoId;
-
-  const { data: intento } = await sb.from('intentos_examen').select('examen_id, estado').eq('id', intentoId).single();
-  if (intento.estado === 'entregado') {
-    errorEl.textContent = 'Ya entregaste este examen anteriormente.';
-    errorEl.style.display = 'block';
-    return;
-  }
-
-  const { data: examen } = await sb.from('examenes').select('titulo').eq('id', intento.examen_id).single();
-  const { data: preguntas } = await sb.from('examen_preguntas').select('*').eq('examen_id', intento.examen_id).order('orden');
-  preguntasActuales = preguntas;
-
-  document.getElementById('panel-codigo').style.display = 'none';
-  document.getElementById('pantalla-examen').style.display = 'block';
-  document.getElementById('titulo-examen').textContent = examen.titulo;
-
-  const form = document.getElementById('form-respuestas');
-  form.innerHTML = '';
-  preguntas.forEach((p, i) => {
-    const div = document.createElement('div');
-    div.className = 'pregunta';
-    let html = `<b>${i+1}. ${p.pregunta_texto}</b><br>`;
-    ['A','B','C','D'].forEach(letra => {
-      const opcion = p[`opcion_${letra.toLowerCase()}`];
-      html += `<label><input type="radio" name="pregunta-${p.id}" value="${letra}"> ${letra}) ${opcion}</label>`;
-    });
-    div.innerHTML = html;
-    form.appendChild(div);
-  });
-}
-
-async function entregarExamen() {
-  const errorEl = document.getElementById('entrega-error');
-  errorEl.style.display = 'none';
-
-  const respuestas = preguntasActuales.map(p => {
-    const seleccion = document.querySelector(`input[name="pregunta-${p.id}"]:checked`);
-    return seleccion ? { intento_id: intentoActual, examen_pregunta_id: p.id, letra_seleccionada: seleccion.value } : null;
-  }).filter(r => r !== null);
-
-  if (respuestas.length < preguntasActuales.length) {
-    errorEl.textContent = 'Contesta todas las preguntas antes de entregar.';
-    errorEl.style.display = 'block';
-    return;
-  }
-
-  const { error: errorInsert } = await sb.from('respuestas_alumno').upsert(respuestas, { onConflict: 'intento_id,examen_pregunta_id' });
-  if (errorInsert) { errorEl.textContent = errorInsert.message; errorEl.style.display = 'block'; return; }
-
-  const { data: calificacion, error: errorCalificar } = await sb.rpc('calificar_intento', { p_intento_id: intentoActual });
-  if (errorCalificar) { errorEl.textContent = errorCalificar.message; errorEl.style.display = 'block'; return; }
-
-  document.getElementById('pantalla-examen').style.display = 'none';
-  document.getElementById('pantalla-resultado').style.display = 'block';
-  document.getElementById('res-calificacion').textContent = calificacion;
-}
-
-async function descargarResultado() {
-  const errorEl = document.getElementById('descarga-error');
-  errorEl.style.display = 'none';
-
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) { errorEl.textContent = 'Sesión expirada, vuelve a iniciar sesión.'; errorEl.style.display = 'block'; return; }
-
-  const resp = await fetch(`${BACKEND_URL}/api/examenes/resultado/${intentoActual}`, {
-    headers: { Authorization: `Bearer ${session.access_token}` },
-  });
-
-  if (!resp.ok) {
-    const detalle = await resp.json().catch(() => ({}));
-    errorEl.textContent = detalle.detail || `Error al generar el PDF (${resp.status}).`;
-    errorEl.style.display = 'block';
-    return;
-  }
-
-  const blob = await resp.blob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'resultado.pdf';
-  a.click();
-  URL.revokeObjectURL(url);
-}
-</script>
+<script src="alumno.js"></script>
 </body>
 </html>

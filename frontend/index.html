@@ -48,9 +48,6 @@
   }
 </style>
 </head>
-
-<link rel="icon" type="image/png" href="Imagenes/Logo.webp">
-
 <body class="bg-white text-gray-900">
 
   <!-- ============ NAV ============ -->
@@ -67,14 +64,13 @@
       <nav class="hidden md:flex items-center gap-8 text-sm text-gray-600">
         <a href="#como-funciona" class="hover:text-gray-900 transition">Cómo funciona</a>
         <a href="#funciones" class="hover:text-gray-900 transition">Funciones</a>
-        <a href="#demo" class="hover:text-gray-900 transition">Demo</a>
       </nav>
 
       <div class="flex items-center gap-4">
-        <a href="#demo" id="nav-login-link" class="hidden sm:block text-sm text-gray-600 hover:text-gray-900 transition">Iniciar sesión</a>
-        <a href="#demo" class="text-sm font-medium text-white bg-[#0066CC] hover:bg-[#0055AD] transition-colors px-4 py-2 rounded-full">
+        <button type="button" onclick="abrirModal('login')" class="hidden sm:block text-sm text-gray-600 hover:text-gray-900 transition">Iniciar sesión</button>
+        <button type="button" onclick="abrirModal('signup')" class="text-sm font-medium text-white bg-[#0066CC] hover:bg-[#0055AD] transition-colors px-4 py-2 rounded-full">
           Comenzar gratis
-        </a>
+        </button>
       </div>
     </div>
   </header>
@@ -90,9 +86,9 @@
       un examen nunca más.
     </p>
     <div class="reveal mt-9 flex items-center justify-center gap-4" style="--reveal-delay:220ms;">
-      <a href="#demo" class="text-sm font-medium text-white bg-[#0066CC] hover:bg-[#0055AD] transition-colors px-6 py-3 rounded-full">
-        Probar el generador
-      </a>
+      <button type="button" onclick="abrirModal('signup')" class="text-sm font-medium text-white bg-[#0066CC] hover:bg-[#0055AD] transition-colors px-6 py-3 rounded-full">
+        Comenzar gratis
+      </button>
       <a href="#como-funciona" class="text-sm font-medium text-gray-700 hover:text-gray-900 transition px-6 py-3">
         Ver cómo funciona ↓
       </a>
@@ -328,126 +324,114 @@
 
   </section>
 
-  <!-- ============ DEMO (formulario, visual por ahora) ============ -->
-  <section id="demo" class="bg-[#F5F5F7] py-24">
-    <div class="max-w-[600px] mx-auto px-6">
-      <div class="reveal text-center mb-10">
-        <h2 class="text-4xl font-semibold letter-tight text-gray-900">
-          Pruébalo tú mismo
-        </h2>
-        <p class="mt-3 text-lg text-gray-500">
-          Crea un examen personalizado en segundos.
-        </p>
+  <!-- ============ MODAL DE AUTENTICACIÓN ============ -->
+  <!-- Oculto por defecto. Se abre con abrirModal('login') o abrirModal('signup')
+       desde cualquier botón de la página. Fondo oscurecido + difuminado (backdrop-blur)
+       para que el login sea lo único enfocado en pantalla mientras está abierto. -->
+  <div id="modal-auth" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4"
+       style="background: rgba(17,24,39,0.6); backdrop-filter: blur(6px);"
+       onclick="cerrarModal(event)">
+    <div class="bg-white rounded-2xl shadow-2xl p-8 sm:p-10 w-full max-w-[440px] relative" onclick="event.stopPropagation()">
+      <button type="button" onclick="cerrarModal()" aria-label="Cerrar"
+        class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+
+      <div class="flex gap-6 mb-8 border-b border-gray-100">
+        <button type="button" id="tab-login" class="pb-3 text-sm font-medium border-b-2 border-[#0066CC] text-[#0066CC]">
+          Iniciar sesión
+        </button>
+        <button type="button" id="tab-signup" class="pb-3 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-600 transition">
+          Crear cuenta
+        </button>
       </div>
 
-      <!-- ===== Bloque de acceso: se muestra cuando NO hay sesión iniciada ===== -->
-      <div id="auth-gate" class="reveal-scale bg-white rounded-2xl shadow-sm p-10" style="--reveal-delay:150ms;">
-        <div class="flex gap-6 mb-8 border-b border-gray-100">
-          <button type="button" id="tab-login" class="pb-3 text-sm font-medium border-b-2 border-[#0066CC] text-[#0066CC]">
-            Iniciar sesión
-          </button>
-          <button type="button" id="tab-signup" class="pb-3 text-sm font-medium border-b-2 border-transparent text-gray-400 hover:text-gray-600 transition">
-            Crear cuenta
-          </button>
+      <!-- Formulario de login -->
+      <form id="login-form" class="space-y-5">
+        <div>
+          <label for="login-email" class="block text-sm font-medium text-gray-700 mb-2">Correo</label>
+          <input type="email" id="login-email" required
+            class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50
+                   focus:outline-none focus:ring-2 focus:ring-[#0066CC] focus:border-transparent transition" />
         </div>
+        <div>
+          <label for="login-password" class="block text-sm font-medium text-gray-700 mb-2">Contraseña</label>
+          <input type="password" id="login-password" required
+            class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50
+                   focus:outline-none focus:ring-2 focus:ring-[#0066CC] focus:border-transparent transition" />
+        </div>
+        <button type="submit" id="login-btn"
+          class="w-full py-3 rounded-xl bg-[#0066CC] text-white font-medium
+                 hover:bg-[#0055AD] transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+          Iniciar sesión
+        </button>
+        <p id="login-error" class="hidden text-sm text-red-600 text-center"></p>
+      </form>
 
-        <!-- Formulario de login -->
-        <form id="login-form" class="space-y-5">
-          <div>
-            <label for="login-email" class="block text-sm font-medium text-gray-700 mb-2">Correo</label>
-            <input type="email" id="login-email" required
-              class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50
-                     focus:outline-none focus:ring-2 focus:ring-[#0066CC] focus:border-transparent transition" />
-          </div>
-          <div>
-            <label for="login-password" class="block text-sm font-medium text-gray-700 mb-2">Contraseña</label>
-            <input type="password" id="login-password" required
-              class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50
-                     focus:outline-none focus:ring-2 focus:ring-[#0066CC] focus:border-transparent transition" />
-          </div>
-          <button type="submit" id="login-btn"
-            class="w-full py-3 rounded-xl bg-[#0066CC] text-white font-medium
-                   hover:bg-[#0055AD] transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
-            Iniciar sesión
-          </button>
-          <p id="login-error" class="hidden text-sm text-red-600 text-center"></p>
-        </form>
-
-        <!-- Formulario de registro (oculto hasta elegir la pestaña "Crear cuenta") -->
-        <form id="signup-form" class="hidden space-y-5">
-          <div>
-            <label for="signup-email" class="block text-sm font-medium text-gray-700 mb-2">Correo</label>
-            <input type="email" id="signup-email" required
-              class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50
-                     focus:outline-none focus:ring-2 focus:ring-[#0066CC] focus:border-transparent transition" />
-          </div>
-          <div>
-            <label for="signup-password" class="block text-sm font-medium text-gray-700 mb-2">Contraseña</label>
-            <input type="password" id="signup-password" required minlength="6"
-              class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50
-                     focus:outline-none focus:ring-2 focus:ring-[#0066CC] focus:border-transparent transition" />
-            <p class="mt-2 text-xs text-gray-400">Mínimo 6 caracteres.</p>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Me estoy registrando como</label>
-            <div class="grid grid-cols-2 gap-3">
-              <label class="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-gray-200
-                             bg-gray-50 cursor-pointer has-[:checked]:border-[#0066CC] has-[:checked]:bg-blue-50 transition">
-                <input type="radio" name="signup-rol" value="alumno" checked class="accent-[#0066CC]" />
-                <span class="text-sm font-medium text-gray-700">Alumno</span>
-              </label>
-              <label class="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-gray-200
-                             bg-gray-50 cursor-pointer has-[:checked]:border-[#0066CC] has-[:checked]:bg-blue-50 transition">
-                <input type="radio" name="signup-rol" value="profesor" class="accent-[#0066CC]" />
-                <span class="text-sm font-medium text-gray-700">Maestro</span>
-              </label>
-            </div>
-          </div>
-          <div id="clave-maestro-wrapper" class="hidden">
-            <label for="signup-clave-maestro" class="block text-sm font-medium text-gray-700 mb-2">
-              Clave de maestro
+      <!-- Formulario de registro (oculto hasta elegir la pestaña "Crear cuenta") -->
+      <form id="signup-form" class="hidden space-y-5">
+        <div>
+          <label for="signup-email" class="block text-sm font-medium text-gray-700 mb-2">Correo</label>
+          <input type="email" id="signup-email" required
+            class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50
+                   focus:outline-none focus:ring-2 focus:ring-[#0066CC] focus:border-transparent transition" />
+        </div>
+        <div>
+          <label for="signup-password" class="block text-sm font-medium text-gray-700 mb-2">Contraseña</label>
+          <input type="password" id="signup-password" required minlength="6"
+            class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50
+                   focus:outline-none focus:ring-2 focus:ring-[#0066CC] focus:border-transparent transition" />
+          <p class="mt-2 text-xs text-gray-400">Mínimo 6 caracteres.</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Me estoy registrando como</label>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-gray-200
+                           bg-gray-50 cursor-pointer has-[:checked]:border-[#0066CC] has-[:checked]:bg-blue-50 transition">
+              <input type="radio" name="signup-rol" value="alumno" checked class="accent-[#0066CC]" />
+              <span class="text-sm font-medium text-gray-700">Alumno</span>
             </label>
-            <input type="password" id="signup-clave-maestro"
-              class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50
-                     focus:outline-none focus:ring-2 focus:ring-[#0066CC] focus:border-transparent transition" />
-            <p class="mt-2 text-xs text-gray-400">Pídesela a quien administra el sistema.</p>
+            <label class="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-gray-200
+                           bg-gray-50 cursor-pointer has-[:checked]:border-[#0066CC] has-[:checked]:bg-blue-50 transition">
+              <input type="radio" name="signup-rol" value="profesor" class="accent-[#0066CC]" />
+              <span class="text-sm font-medium text-gray-700">Maestro</span>
+            </label>
           </div>
-          <button type="submit" id="signup-btn"
-            class="w-full py-3 rounded-xl bg-[#0066CC] text-white font-medium
-                   hover:bg-[#0055AD] transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
-            Crear cuenta
-          </button>
-          <p id="signup-error" class="hidden text-sm text-red-600 text-center"></p>
-          <p id="signup-success" class="hidden text-sm text-green-600 text-center"></p>
-        </form>
-      </div>
-
-      <!-- ===== Post-login: redirige a cada quien a su panel correcto ===== -->
-      <div id="generador-wrapper" class="hidden">
-        <div class="flex items-center justify-between mb-4 px-1">
-          <span id="user-email" class="text-sm text-gray-500"></span>
-          <button id="logout-btn" class="text-sm text-gray-500 hover:text-gray-900 transition">Cerrar sesión</button>
         </div>
-
-        <div class="reveal-scale bg-white rounded-2xl shadow-sm p-10 text-center" style="--reveal-delay:150ms;">
-          <p id="redireccion-cargando" class="text-gray-500">Cargando tu panel…</p>
-          <div id="redireccion-listo" class="hidden">
-            <p class="text-gray-600 mb-6">Sesión iniciada correctamente. Continúa en tu panel:</p>
-            <a id="link-panel" href="#"
-              class="inline-block px-6 py-3 rounded-xl bg-[#0066CC] text-white font-medium
-                     hover:bg-[#0055AD] transition-colors">
-              Ir a mi panel
-            </a>
-          </div>
-          <p id="redireccion-error" class="hidden text-sm text-red-600 mt-4"></p>
+        <div id="clave-maestro-wrapper" class="hidden">
+          <label for="signup-clave-maestro" class="block text-sm font-medium text-gray-700 mb-2">
+            Clave de maestro
+          </label>
+          <input type="password" id="signup-clave-maestro"
+            class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50
+                   focus:outline-none focus:ring-2 focus:ring-[#0066CC] focus:border-transparent transition" />
+          <p class="mt-2 text-xs text-gray-400">Pídesela a quien administra el sistema.</p>
         </div>
-      </div>
-
-      <p class="text-center text-sm text-gray-400 mt-6">
-        El examen se descargará como PDF, listo para imprimir.
-      </p>
+        <button type="submit" id="signup-btn"
+          class="w-full py-3 rounded-xl bg-[#0066CC] text-white font-medium
+                 hover:bg-[#0055AD] transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+          Crear cuenta
+        </button>
+        <p id="signup-error" class="hidden text-sm text-red-600 text-center"></p>
+        <p id="signup-success" class="hidden text-sm text-green-600 text-center"></p>
+      </form>
     </div>
-  </section>
+  </div>
+
+  <!-- ============ PANTALLA DE REDIRECCIÓN ============ -->
+  <!-- Se muestra a pantalla completa SOLO si ya había una sesión activa al
+       cargar la página (alguien que vuelve). Tapa toda la página mientras
+       decide a qué panel mandarlo, para no mezclar login con contenido de
+       marketing. -->
+  <div id="pantalla-redirigiendo" class="hidden fixed inset-0 z-[200] bg-white flex items-center justify-center px-4">
+    <div class="text-center">
+      <p id="redireccion-cargando" class="text-gray-500">Cargando tu panel…</p>
+      <div id="redireccion-error" class="hidden">
+        <p class="text-red-600 text-sm mb-4">No se pudo determinar tu panel. Contacta al administrador.</p>
+        <button id="redireccion-logout-btn" class="text-sm text-gray-500 hover:text-gray-900 transition underline">Cerrar sesión</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ============ CTA FINAL ============ -->
   <section class="bg-[#0066CC] py-20">
@@ -459,9 +443,9 @@
         Arma tu banco de preguntas una vez y genera exámenes distintos
         cada vez que los necesites.
       </p>
-      <a href="#demo" class="inline-block mt-8 text-sm font-medium text-[#0066CC] bg-white hover:bg-blue-50 transition-colors px-6 py-3 rounded-full">
+      <button type="button" onclick="abrirModal('signup')" class="inline-block mt-8 text-sm font-medium text-[#0066CC] bg-white hover:bg-blue-50 transition-colors px-6 py-3 rounded-full">
         Empezar ahora
-      </a>
+      </button>
     </div>
   </section>
 
@@ -488,7 +472,6 @@
           <ul class="space-y-2 text-sm text-gray-500">
             <li><a href="#como-funciona" class="hover:text-gray-900 transition">Cómo funciona</a></li>
             <li><a href="#funciones" class="hover:text-gray-900 transition">Funciones</a></li>
-            <li><a href="#demo" class="hover:text-gray-900 transition">Demo</a></li>
           </ul>
         </div>
 
@@ -547,54 +530,59 @@
     // Cada panel real vive en su propio archivo HTML — ajusta estos nombres
     // si los guardaste con otro nombre en tu carpeta frontend/.
     const PANEL_POR_ROL = {
-      profesor: { archivo: 'maestro_real.html', texto: 'Ir a mi panel de maestro' },
-      admin:    { archivo: 'admin.html',        texto: 'Ir al panel de administrador' },
-      alumno:   { archivo: 'alumno_real.html',  texto: 'Ir a mi panel de alumno' },
+      profesor: 'maestro_real.html',
+      admin: 'admin.html',
+      alumno: 'alumno_real.html',
     };
 
-    async function mostrarPanelSegunRol(usuario) {
-      const cargando = document.getElementById('redireccion-cargando');
-      const listo = document.getElementById('redireccion-listo');
-      const errorEl = document.getElementById('redireccion-error');
-      const link = document.getElementById('link-panel');
-
-      cargando.classList.remove('hidden');
-      listo.classList.add('hidden');
-      errorEl.classList.add('hidden');
-
+    // Busca el rol del usuario y lo manda a su panel. Se usa tanto para
+    // quien ya traía sesión al abrir la página, como justo después de un
+    // login/registro exitoso dentro del modal.
+    async function irAPanelSegunRol(usuario) {
       const { data: perfil, error } = await sb.from('perfiles').select('rol').eq('id', usuario.id).single();
 
-      cargando.classList.add('hidden');
-
       if (error || !perfil || !PANEL_POR_ROL[perfil.rol]) {
-        errorEl.textContent = 'No se pudo determinar tu panel. Contacta al administrador.';
-        errorEl.classList.remove('hidden');
+        document.getElementById('redireccion-cargando').classList.add('hidden');
+        document.getElementById('redireccion-error').classList.remove('hidden');
         return;
       }
 
-      const { archivo, texto } = PANEL_POR_ROL[perfil.rol];
-      link.href = archivo;
-      link.textContent = texto;
-      listo.classList.remove('hidden');
+      location.href = PANEL_POR_ROL[perfil.rol];
     }
 
-    // ===== Autenticación: login, registro y control de visibilidad =====
-    const authGate = document.getElementById('auth-gate');
-    const generadorWrapper = document.getElementById('generador-wrapper');
-    const userEmailEl = document.getElementById('user-email');
+    // ===== Modal de autenticación =====
+    const modalAuth = document.getElementById('modal-auth');
 
-    // Reacciona a cualquier cambio de sesión: login, logout, o sesión
-    // recordada de una visita anterior (Supabase la guarda sola).
-    sb.auth.onAuthStateChange((_event, session) => {
+    function abrirModal(tab) {
+      modalAuth.classList.remove('hidden');
+      mostrarTab(tab || 'login');
+    }
+
+    function cerrarModal(evento) {
+      // Si viene de un click, solo cierra cuando el click fue en el fondo
+      // (el backdrop), no cuando fue dentro de la tarjeta — eso ya se
+      // frena con stopPropagation() en el HTML.
+      modalAuth.classList.add('hidden');
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !modalAuth.classList.contains('hidden')) cerrarModal();
+    });
+
+    // ===== Si ya había sesión activa al entrar, saltar directo al panel =====
+    // (no tiene caso mostrarle la página de marketing a alguien que ya
+    // inició sesión antes).
+    (async () => {
+      const { data: { session } } = await sb.auth.getSession();
       if (session) {
-        authGate.classList.add('hidden');
-        generadorWrapper.classList.remove('hidden');
-        userEmailEl.textContent = session.user.email;
-        mostrarPanelSegunRol(session.user);
-      } else {
-        authGate.classList.remove('hidden');
-        generadorWrapper.classList.add('hidden');
+        document.getElementById('pantalla-redirigiendo').classList.remove('hidden');
+        await irAPanelSegunRol(session.user);
       }
+    })();
+
+    document.getElementById('redireccion-logout-btn').addEventListener('click', async () => {
+      await sb.auth.signOut();
+      location.reload();
     });
 
     // --- Tabs: Iniciar sesión / Crear cuenta ---
@@ -619,11 +607,6 @@
     tabLogin.addEventListener('click', () => mostrarTab('login'));
     tabSignup.addEventListener('click', () => mostrarTab('signup'));
 
-    // El link "Iniciar sesión" del nav de arriba baja hasta la sección
-    // demo (por el href="#demo") y además fuerza la pestaña de login,
-    // por si el usuario había dejado abierta la de "Crear cuenta".
-    document.getElementById('nav-login-link').addEventListener('click', () => mostrarTab('login'));
-
     // --- Login ---
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -635,14 +618,20 @@
 
       const email = document.getElementById('login-email').value;
       const password = document.getElementById('login-password').value;
-      const { error } = await sb.auth.signInWithPassword({ email, password });
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
 
       if (error) {
         loginError.textContent = 'Correo o contraseña incorrectos.';
         loginError.classList.remove('hidden');
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Iniciar sesión';
+        return;
       }
-      loginBtn.disabled = false;
-      loginBtn.textContent = 'Iniciar sesión';
+
+      // Login correcto: oculta el modal y manda directo al panel.
+      modalAuth.classList.add('hidden');
+      document.getElementById('pantalla-redirigiendo').classList.remove('hidden');
+      await irAPanelSegunRol(data.user);
     });
 
     // --- Mostrar el campo de clave de maestro solo si eligen ese rol ---
@@ -681,23 +670,27 @@
       if (error) {
         signupError.textContent = error.message;
         signupError.classList.remove('hidden');
-      } else if (data.user && !data.session) {
-        // Supabase, por defecto, pide confirmar el correo antes de dejar
-        // entrar — es el comportamiento estándar y seguro de producción.
-        signupSuccess.textContent = 'Cuenta creada. Revisa tu correo para confirmarla antes de iniciar sesión.';
-        signupSuccess.classList.remove('hidden');
-        signupForm.reset();
+        signupBtn.disabled = false;
+        signupBtn.textContent = 'Crear cuenta';
+        return;
       }
-      // Si el proyecto tiene la confirmación de correo desactivada,
-      // data.session ya viene lista y onAuthStateChange te mete solo.
 
+      if (data.session) {
+        // El proyecto tiene la confirmación de correo desactivada: ya hay
+        // sesión de inmediato, así que mandamos directo al panel.
+        modalAuth.classList.add('hidden');
+        document.getElementById('pantalla-redirigiendo').classList.remove('hidden');
+        await irAPanelSegunRol(data.session.user);
+        return;
+      }
+
+      // Caso normal: Supabase pide confirmar el correo antes de dejar
+      // entrar. Dejamos el modal abierto con el mensaje de éxito.
+      signupSuccess.textContent = 'Cuenta creada. Revisa tu correo para confirmarla antes de iniciar sesión.';
+      signupSuccess.classList.remove('hidden');
+      signupForm.reset();
       signupBtn.disabled = false;
       signupBtn.textContent = 'Crear cuenta';
-    });
-
-    // --- Logout ---
-    document.getElementById('logout-btn').addEventListener('click', async () => {
-      await sb.auth.signOut();
     });
   </script>
 

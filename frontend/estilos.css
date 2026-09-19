@@ -1,0 +1,163 @@
+/* =========================================================
+   Sistema de diseño compartido — Bitácora (generador de exámenes)
+   Se usa igual en admin.html, y en las próximas versiones de
+   maestro_real.html y alumno_real.html, para que los tres paneles
+   se vean como parte del mismo sistema.
+   ========================================================= */
+
+:root {
+  --bg: #0B0D12;
+  --surface: #14171D;
+  --surface-2: #1B1F27;
+  --border: #262B35;
+  --text: #E7E9EE;
+  --text-muted: #8A8F9C;
+  --accent: #F5A524;
+  --accent-soft: rgba(245, 165, 36, 0.12);
+  --success: #3DD68C;
+  --success-soft: rgba(61, 214, 140, 0.12);
+  --danger: #F2545B;
+  --danger-soft: rgba(242, 84, 91, 0.12);
+  --info: #5B8DEF;
+}
+
+/* ---- Modo claro ---- */
+:root[data-theme="light"] {
+  --bg: #F4F5F7;
+  --surface: #FFFFFF;
+  --surface-2: #F0F1F4;
+  --border: #E2E4E9;
+  --text: #14171D;
+  --text-muted: #6B7280;
+  --accent-soft: rgba(245, 165, 36, 0.14);
+  --success-soft: rgba(61, 214, 140, 0.14);
+  --danger-soft: rgba(242, 84, 91, 0.14);
+}
+
+body { transition: background-color .2s, color .2s; }
+
+/* ---- Botón de alternar tema (sol/luna) ---- */
+.theme-toggle {
+  width: 34px; height: 34px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); background: var(--surface-2);
+  color: var(--text-muted); cursor: pointer; flex-shrink: 0;
+  transition: border-color .15s, color .15s;
+}
+.theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ---- Sidebar: fija en desktop, cajón deslizable en móvil ---- */
+@media (max-width: 767px) {
+  .sidebar {
+    position: fixed; inset: 0 25% 0 0; z-index: 40;
+    transform: translateX(-100%);
+    transition: transform .2s ease;
+    display: flex !important;
+  }
+  .sidebar.abierta { transform: translateX(0); }
+}
+.sidebar-backdrop {
+  display: none; position: fixed; inset: 0; z-index: 30;
+  background: rgba(0,0,0,.5);
+}
+.sidebar-backdrop.visible { display: block; }
+.topbar-movil { display: none; }
+@media (max-width: 767px) {
+  .topbar-movil { display: flex; }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Sans', sans-serif;
+  margin: 0;
+  min-height: 100vh;
+}
+
+h1, h2, h3, .display { font-family: 'Space Grotesk', sans-serif; }
+
+/* ---- Barra lateral ---- */
+.sidebar { background: var(--surface); border-right: 1px solid var(--border); }
+
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; border-radius: 10px; cursor: pointer;
+  color: var(--text-muted); font-size: 14px; font-weight: 500;
+  transition: background .15s, color .15s;
+}
+.nav-item:hover { background: var(--surface-2); color: var(--text); }
+.nav-item.active { background: var(--accent-soft); color: var(--accent); }
+
+/* ---- Tarjetas ---- */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; }
+
+.kpi-card { position: relative; overflow: hidden; }
+.kpi-card::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: var(--accent-line, var(--accent));
+}
+
+/* ---- Tablas ---- */
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+thead th {
+  text-align: left; color: var(--text-muted); font-weight: 500;
+  font-size: 12px; letter-spacing: .01em; padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+tbody td { padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tbody tr:hover { background: var(--surface-2); }
+tbody tr.inactivo { opacity: .5; }
+
+/* ---- Badges de estado ---- */
+.badge {
+  display: inline-flex; align-items: center; padding: 3px 10px;
+  border-radius: 999px; font-size: 12px; font-weight: 500;
+}
+.badge-success { background: var(--success-soft); color: var(--success); }
+.badge-danger { background: var(--danger-soft); color: var(--danger); }
+.badge-info { background: rgba(91,141,239,.12); color: var(--info); }
+.badge-muted { background: var(--surface-2); color: var(--text-muted); }
+
+/* ---- Botones ---- */
+.btn {
+  padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 500;
+  cursor: pointer; border: 1px solid var(--border); background: var(--surface-2);
+  color: var(--text); transition: border-color .15s, color .15s;
+}
+.btn:hover { border-color: var(--text-muted); }
+.btn-danger { color: var(--danger); }
+.btn-danger:hover { border-color: var(--danger); }
+.btn-accent { background: var(--accent); color: #1a1206; border-color: var(--accent); font-weight: 600; }
+.btn-accent:hover { opacity: .9; }
+
+/* ---- Formularios ---- */
+select.rol-select {
+  background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
+  border-radius: 8px; padding: 5px 8px; font-size: 13px;
+}
+
+input[type=text], input[type=email], input[type=password], input[type=number] {
+  background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
+  border-radius: 8px; padding: 9px 12px; font-size: 14px; width: 100%;
+}
+input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* ---- Secciones tipo tab (para paneles con navegación lateral) ---- */
+.section { display: none; }
+.section.active { display: block; }
+
+/* ---- Tarjetas de categoría (banco de preguntas) ---- */
+.cat-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 14px; cursor: pointer; text-align: left;
+  transition: border-color .15s, background .15s;
+}
+.cat-card:hover { border-color: var(--text-muted); }
+.cat-card.activa { border-color: var(--accent); background: var(--accent-soft); }
+.cat-card .cat-nombre { font-weight: 600; font-size: 14px; text-transform: capitalize; }
+.cat-card .cat-conteo { font-size: 12px; color: var(--text-muted); }
+.cat-card.activa .cat-conteo { color: var(--accent); }
+::-webkit-scrollbar { height: 8px; width: 8px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
