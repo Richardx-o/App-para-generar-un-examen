@@ -14,6 +14,12 @@ const BADGE_POR_ROL = {
   alumno: 'badge-muted',
 };
 
+const TEXTO_HEADER_POR_ROL = {
+  admin: 'Administrador',
+  profesor: 'Profesor',
+  alumno: 'Alumno',
+};
+
 let usuarioActual = null;
 
 function iniciales(nombre, correo) {
@@ -41,6 +47,7 @@ async function cargarPerfil(usuario) {
     return;
   }
 
+  document.getElementById('header-rol').textContent = TEXTO_HEADER_POR_ROL[perfil.rol] || 'Mi cuenta';
   document.getElementById('avatar-iniciales').textContent = iniciales(perfil.nombre_completo, usuario.email);
   document.getElementById('nombre-mostrado').textContent = perfil.nombre_completo || usuario.email;
   document.getElementById('correo-mostrado').textContent = usuario.email;

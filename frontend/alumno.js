@@ -33,6 +33,72 @@ async function cerrarSesion() {
   }
 })();
 
+// ---- Navegación entre las 3 vistas principales ----
+function ocultarTodasLasTarjetas() {
+  ['tarjeta-codigo', 'tarjeta-examen', 'tarjeta-resultado', 'tarjeta-mis-resultados']
+    .forEach(id => document.getElementById(id).classList.add('hidden'));
+}
+
+function mostrarPantallaCodigo() {
+  ocultarTodasLasTarjetas();
+  document.getElementById('tarjeta-codigo').classList.remove('hidden');
+}
+
+async function mostrarMisResultados() {
+  ocultarTodasLasTarjetas();
+  document.getElementById('tarjeta-mis-resultados').classList.remove('hidden');
+  await cargarMisResultados();
+}
+
+async function cargarMisResultados() {
+  const contenedor = document.getElementById('lista-mis-resultados');
+  contenedor.innerHTML = `<p class="text-sm" style="color:var(--text-muted)">Cargando…</p>`;
+
+  const { data, error } = await sb
+    .from('intentos_examen')
+    .select('id, calificacion, entregado_en, examenes(titulo)')
+    .eq('alumno_id', usuarioActual.id)
+    .eq('estado', 'entregado')
+    .order('entregado_en', { ascending: false });
+
+  if (error) { contenedor.innerHTML = `<p class="text-sm" style="color:var(--danger)">${error.message}</p>`; return; }
+
+  if (!data || data.length === 0) {
+    contenedor.innerHTML = `<p class="text-sm" style="color:var(--text-muted)">Todavía no has entregado ningún examen.</p>`;
+    return;
+  }
+
+  contenedor.innerHTML = '';
+  data.forEach(i => {
+    const aprobado = Number(i.calificacion) >= 70;
+    const div = document.createElement('div');
+    div.className = 'card p-4 flex items-center justify-between gap-3 flex-wrap';
+    div.innerHTML = `
+      <div>
+        <p class="font-medium">${i.examenes?.titulo || 'Examen'}</p>
+        <p class="text-xs mt-0.5" style="color:var(--text-muted)">${new Date(i.entregado_en).toLocaleString()}</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="badge ${aprobado ? 'badge-success' : 'badge-danger'}">${i.calificacion}%</span>
+        <button class="btn btn-accent" onclick="descargarResultado('${i.id}')">Descargar PDF</button>
+      </div>`;
+    contenedor.appendChild(div);
+  });
+}
+
+async function mostrarResultado(intentoId, calificacion) {
+  intentoActual = intentoId;
+  ocultarTodasLasTarjetas();
+  document.getElementById('tarjeta-resultado').classList.remove('hidden');
+  document.getElementById('res-calificacion').textContent = calificacion;
+
+  const aroEl = document.getElementById('res-aro');
+  const aprobado = calificacion >= 70;
+  aroEl.style.color = aprobado ? 'var(--success)' : 'var(--danger)';
+  document.getElementById('res-veredicto').textContent = aprobado ? 'Aprobado' : 'No aprobado';
+  document.getElementById('res-veredicto').className = `badge ${aprobado ? 'badge-success' : 'badge-danger'}`;
+}
+
 async function unirseAExamen() {
   const codigo = document.getElementById('input-codigo').value.trim();
   const errorEl = document.getElementById('codigo-error');
@@ -42,10 +108,11 @@ async function unirseAExamen() {
   if (error) { errorEl.textContent = error.message; errorEl.classList.remove('hidden'); return; }
   intentoActual = intentoId;
 
-  const { data: intento } = await sb.from('intentos_examen').select('examen_id, estado').eq('id', intentoId).single();
+  const { data: intento } = await sb.from('intentos_examen').select('examen_id, estado, calificacion').eq('id', intentoId).single();
   if (intento.estado === 'entregado') {
-    errorEl.textContent = 'Ya entregaste este examen anteriormente.';
-    errorEl.classList.remove('hidden');
+    // Ya lo había entregado antes: en vez de bloquearlo con un error,
+    // le mostramos directo su resultado (y puede volver a descargar el PDF).
+    await mostrarResultado(intentoId, intento.calificacion);
     return;
   }
 
@@ -53,7 +120,7 @@ async function unirseAExamen() {
   const { data: preguntas } = await sb.from('examen_preguntas').select('*').eq('examen_id', intento.examen_id).order('orden');
   preguntasActuales = preguntas;
 
-  document.getElementById('tarjeta-codigo').classList.add('hidden');
+  ocultarTodasLasTarjetas();
   document.getElementById('tarjeta-examen').classList.remove('hidden');
   document.getElementById('titulo-examen').textContent = examen.titulo;
   document.getElementById('contador-preguntas').textContent = `${preguntas.length} pregunta${preguntas.length === 1 ? '' : 's'}`;
@@ -98,32 +165,28 @@ async function entregarExamen() {
   const { data: calificacion, error: errorCalificar } = await sb.rpc('calificar_intento', { p_intento_id: intentoActual });
   if (errorCalificar) { errorEl.textContent = errorCalificar.message; errorEl.classList.remove('hidden'); return; }
 
-  document.getElementById('tarjeta-examen').classList.add('hidden');
-  document.getElementById('tarjeta-resultado').classList.remove('hidden');
-  document.getElementById('res-calificacion').textContent = calificacion;
-
-  const aroEl = document.getElementById('res-aro');
-  const aprobado = calificacion >= 70;
-  aroEl.style.color = aprobado ? 'var(--success)' : 'var(--danger)';
-  document.getElementById('res-veredicto').textContent = aprobado ? 'Aprobado' : 'No aprobado';
-  document.getElementById('res-veredicto').className = `badge ${aprobado ? 'badge-success' : 'badge-danger'}`;
+  await mostrarResultado(intentoActual, calificacion);
 }
 
-async function descargarResultado() {
+async function descargarResultado(intentoId) {
+  // Si se llama desde el botón de la tarjeta de resultado (sin argumento),
+  // usa el intento que está en pantalla; si se llama desde "Mis resultados",
+  // viene con el id específico de esa fila.
+  const id = intentoId || intentoActual;
   const errorEl = document.getElementById('descarga-error');
-  errorEl.classList.add('hidden');
+  if (errorEl) errorEl.classList.add('hidden');
 
   const { data: { session } } = await sb.auth.getSession();
-  if (!session) { errorEl.textContent = 'Sesión expirada, vuelve a iniciar sesión.'; errorEl.classList.remove('hidden'); return; }
+  if (!session) { if (errorEl) { errorEl.textContent = 'Sesión expirada, vuelve a iniciar sesión.'; errorEl.classList.remove('hidden'); } return; }
 
-  const resp = await fetch(`${BACKEND_URL}/api/examenes/resultado/${intentoActual}`, {
+  const resp = await fetch(`${BACKEND_URL}/api/examenes/resultado/${id}`, {
     headers: { Authorization: `Bearer ${session.access_token}` },
   });
 
   if (!resp.ok) {
     const detalle = await resp.json().catch(() => ({}));
-    errorEl.textContent = detalle.detail || `Error al generar el PDF (${resp.status}).`;
-    errorEl.classList.remove('hidden');
+    const mensaje = detalle.detail || `Error al generar el PDF (${resp.status}).`;
+    if (errorEl) { errorEl.textContent = mensaje; errorEl.classList.remove('hidden'); } else { alert(mensaje); }
     return;
   }
 

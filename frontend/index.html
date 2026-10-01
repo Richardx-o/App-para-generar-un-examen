@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Generador de Exámenes</title>
+<link rel="icon" href="Imagenes/Logo.webp" type="image/webp">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -433,6 +434,47 @@
     </div>
   </div>
 
+  <!-- ============ ACERCA DE ============ -->
+  <section id="acerca-de" class="bg-[#F5F5F7] py-24">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="reveal text-center max-w-2xl mx-auto mb-16">
+        <h2 class="text-4xl font-semibold letter-tight">Acerca de este proyecto</h2>
+      </div>
+
+      <div class="grid sm:grid-cols-3 gap-8">
+        <div class="reveal text-center" style="--reveal-delay:0ms;">
+          <div class="w-12 h-12 mx-auto rounded-full bg-white shadow-sm flex items-center justify-center mb-5">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0066CC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1 3 3 6 3s6-2 6-3v-5"/></svg>
+          </div>
+          <h3 class="font-semibold text-gray-900 mb-2">Institución</h3>
+          <p class="text-sm text-gray-500 leading-relaxed">
+            Benemérita Universidad Autónoma de Puebla (BUAP).
+          </p>
+        </div>
+
+        <div class="reveal text-center" style="--reveal-delay:120ms;">
+          <div class="w-12 h-12 mx-auto rounded-full bg-white shadow-sm flex items-center justify-center mb-5">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0066CC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          </div>
+          <h3 class="font-semibold text-gray-900 mb-2">Tipo de proyecto</h3>
+          <p class="text-sm text-gray-500 leading-relaxed">
+            Servicio social, hecho para apoyar a maestros y alumnos en clase.
+          </p>
+        </div>
+
+        <div class="reveal text-center" style="--reveal-delay:240ms;">
+          <div class="w-12 h-12 mx-auto rounded-full bg-white shadow-sm flex items-center justify-center mb-5">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0066CC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          </div>
+          <h3 class="font-semibold text-gray-900 mb-2">Objetivo</h3>
+          <p class="text-sm text-gray-500 leading-relaxed">
+            Que generar y resolver exámenes sea rápido, aleatorio y sin papeleo.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ============ CTA FINAL ============ -->
   <section class="bg-[#0066CC] py-20">
     <div class="reveal max-w-3xl mx-auto px-6 text-center">
@@ -452,7 +494,7 @@
   <!-- ============ FOOTER ============ -->
   <footer class="bg-white pt-16 pb-8">
     <div class="max-w-6xl mx-auto px-6">
-      <div class="grid sm:grid-cols-2 md:grid-cols-4 gap-10">
+      <div class="grid sm:grid-cols-2 md:grid-cols-5 gap-10">
         <div>
           <a href="#" class="flex items-center gap-2 font-semibold letter-tight mb-3">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0066CC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -476,17 +518,24 @@
         </div>
 
         <div>
-          <p class="text-sm font-medium text-gray-900 mb-3">Empresa</p>
+          <p class="text-sm font-medium text-gray-900 mb-3">Escuela</p>
           <ul class="space-y-2 text-sm text-gray-500">
-            <li><a href="#" class="hover:text-gray-900 transition">Acerca de</a></li>
-            <li><a href="#" class="hover:text-gray-900 transition">Contacto</a></li>
+            <li><a href="#acerca-de" class="hover:text-gray-900 transition">Acerca de</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <p class="text-sm font-medium text-gray-900 mb-3">Contacto</p>
+          <ul class="space-y-2 text-sm text-gray-500">
+            <li><a href="https://github.com/Elyairsm" target="_blank" rel="noopener" class="hover:text-gray-900 transition">Yair Santiago Méndez</a></li>
+            <li><a href="https://github.com/Richardx-o" target="_blank" rel="noopener" class="hover:text-gray-900 transition">Ricardo Hernández Hernández</a></li>
           </ul>
         </div>
 
         <div>
           <p class="text-sm font-medium text-gray-900 mb-3">Soporte</p>
           <ul class="space-y-2 text-sm text-gray-500">
-            <li><a href="#" class="hover:text-gray-900 transition">Ayuda</a></li>
+            <li><a href="#como-funciona" class="hover:text-gray-900 transition">Ayuda</a></li>
             <li><a href="#" class="hover:text-gray-900 transition">Privacidad</a></li>
           </ul>
         </div>

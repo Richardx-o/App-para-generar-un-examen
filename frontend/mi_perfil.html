@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mi Perfil</title>
+<link rel="icon" href="Imagenes/Logo.webp" type="image/webp">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -31,8 +32,8 @@
 
   <header class="flex items-center justify-between gap-3 flex-wrap px-4 sm:px-6 py-3 sm:py-4 border-b" style="border-color: var(--border);">
     <div class="flex items-center gap-2">
-      <div class="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-sm" style="background: var(--accent); color:#1a1206;">E</div>
-      <span class="display font-semibold">Bitácora</span>
+      <img src="Imagenes/Logo.webp" alt="Logo" class="w-7 h-7 rounded-lg object-contain">
+      <span class="display font-semibold" id="header-rol">Mi cuenta</span>
     </div>
     <div class="flex items-center gap-2 flex-wrap">
       <button class="theme-toggle" onclick="alternarTema()"></button>

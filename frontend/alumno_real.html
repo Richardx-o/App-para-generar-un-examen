@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Vista del Alumno</title>
+<link rel="icon" href="Imagenes/Logo.webp" type="image/webp">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,11 +31,12 @@
   <!-- Encabezado simple, sin sidebar (es un flujo lineal, no varias secciones) -->
   <header class="flex items-center justify-between gap-3 flex-wrap px-4 sm:px-6 py-3 sm:py-4 border-b" style="border-color: var(--border);">
     <div class="flex items-center gap-2">
-      <div class="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-sm" style="background: var(--accent); color:#1a1206;">E</div>
-      <span class="display font-semibold">Bitácora</span>
+      <img src="Imagenes/Logo.webp" alt="Logo" class="w-7 h-7 rounded-lg object-contain">
+      <span class="display font-semibold">Alumno</span>
     </div>
     <div class="flex items-center gap-2 flex-wrap justify-end">
       <button class="theme-toggle" onclick="alternarTema()"></button>
+      <button class="btn text-sm" onclick="mostrarMisResultados()">Mis resultados</button>
       <a href="mi_perfil.html" class="btn text-sm">Mi perfil</a>
       <span id="sesion-info" class="text-xs hidden sm:inline" style="color: var(--text-muted);"></span>
       <button onclick="cerrarSesion()" class="btn text-sm">Cerrar sesión</button>
@@ -53,6 +55,13 @@
         </label>
         <button class="btn btn-accent w-full" onclick="unirseAExamen()">Entrar al examen</button>
         <p id="codigo-error" class="text-sm mt-3 hidden" style="color: var(--danger);"></p>
+      </div>
+
+      <!-- ---------- Mis resultados (exámenes ya entregados) ---------- -->
+      <div id="tarjeta-mis-resultados" class="hidden">
+        <button class="text-sm mb-4" style="color: var(--text-muted); background:none; border:none; cursor:pointer;" onclick="mostrarPantallaCodigo()">← Volver</button>
+        <h1 class="text-xl font-semibold mb-4">Mis resultados</h1>
+        <div id="lista-mis-resultados" class="space-y-3"></div>
       </div>
 
       <!-- ---------- Resolviendo el examen ---------- -->

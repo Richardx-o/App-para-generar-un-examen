@@ -135,6 +135,8 @@ def generar_pdf_resultado(
     nombre_alumno: str,
     calificacion: float,
     detalle: list[dict],
+    matricula_alumno: str | None = None,
+    nombre_maestro: str | None = None,
 ) -> BytesIO:
     """
     PDF de resultado individual: lo que un alumno descarga después de
@@ -160,11 +162,19 @@ def generar_pdf_resultado(
     frame = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="normal")
     doc.addPageTemplates([PageTemplate(id="unica", frames=[frame])])
 
+    linea_alumno = f"Alumno: {nombre_alumno}"
+    if matricula_alumno:
+        linea_alumno += f" (Matrícula: {matricula_alumno})"
+
     elementos = [
         Paragraph(f"Resultado — {titulo_examen}", _estilo_titulo),
         Paragraph(
-            f"Alumno: {nombre_alumno} &nbsp;|&nbsp; "
-            f"Calificación: {calificacion}% &nbsp;|&nbsp; "
+            f"{linea_alumno} &nbsp;|&nbsp; "
+            f"Maestro: {nombre_maestro or '—'} &nbsp;|&nbsp; "
+            f"Calificación: {calificacion}%",
+            _estilo_subtitulo,
+        ),
+        Paragraph(
             f"Entregado el {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}",
             _estilo_subtitulo,
         ),

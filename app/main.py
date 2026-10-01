@@ -178,7 +178,11 @@ async def resultado_examen(intento_id: str, authorization: str = Header(...)):
 
     intento_resp = await (
         client.table("intentos_examen")
-        .select("id, examen_id, alumno_id, estado, calificacion, examenes(titulo)")
+        # El embed anidado examenes(..., perfiles(...)) trae de un jalón el
+        # título del examen Y el nombre del maestro que lo creó, siguiendo
+        # la relación examenes.creado_por -> perfiles.id. Requiere la
+        # política "Alumnos ven perfil del profesor de su examen" (RLS).
+        .select("id, examen_id, alumno_id, estado, calificacion, examenes(titulo, perfiles(nombre_completo))")
         .eq("id", intento_id)
         .maybe_single()
         .execute()
@@ -189,10 +193,13 @@ async def resultado_examen(intento_id: str, authorization: str = Header(...)):
     if intento["estado"] != "entregado":
         raise HTTPException(status_code=409, detail="Este examen todavía no ha sido entregado.")
 
+    nombre_maestro = (intento["examenes"].get("perfiles") or {}).get("nombre_completo") or "—"
+
     perfil_resp = await (
-        client.table("perfiles").select("nombre_completo").eq("id", intento["alumno_id"]).maybe_single().execute()
+        client.table("perfiles").select("nombre_completo, matricula").eq("id", intento["alumno_id"]).maybe_single().execute()
     )
     nombre_alumno = (perfil_resp.data or {}).get("nombre_completo") or "Alumno"
+    matricula_alumno = (perfil_resp.data or {}).get("matricula")
 
     preguntas_resp = await (
         client.table("examen_preguntas")
@@ -227,6 +234,8 @@ async def resultado_examen(intento_id: str, authorization: str = Header(...)):
         generar_pdf_resultado,
         titulo_examen=intento["examenes"]["titulo"],
         nombre_alumno=nombre_alumno,
+        matricula_alumno=matricula_alumno,
+        nombre_maestro=nombre_maestro,
         calificacion=intento["calificacion"],
         detalle=detalle,
     )
