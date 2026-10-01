@@ -20,7 +20,7 @@
   <div class="card p-8 max-w-sm w-full text-center">
     <p id="verificando" class="text-sm" style="color: var(--text-muted);">Verificando sesión…</p>
     <div id="acceso-denegado" class="hidden">
-      <p class="mb-3">Esta cuenta no tiene rol de administrador.</p>
+      <p class="mb-3" id="mensaje-acceso-denegado">Esta cuenta no tiene rol de administrador.</p>
       <a href="index.html" class="btn btn-accent inline-block">Volver al inicio</a>
       <p class="mt-4 text-xs text-left p-3 rounded-lg" style="background: var(--surface-2); color: var(--text-muted);">
         Para promover una cuenta a admin, corre esto en el SQL Editor de Supabase:<br>
@@ -149,6 +149,7 @@
   </main>
 </div>
 
+<script src="utilidades.js"></script>
 <script src="admin.js"></script>
 </body>
 </html>

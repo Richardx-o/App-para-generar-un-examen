@@ -338,7 +338,7 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
 
-      <div class="flex gap-6 mb-8 border-b border-gray-100">
+      <div id="tabs-auth" class="flex gap-6 mb-8 border-b border-gray-100">
         <button type="button" id="tab-login" class="pb-3 text-sm font-medium border-b-2 border-[#0066CC] text-[#0066CC]">
           Iniciar sesión
         </button>
@@ -360,6 +360,9 @@
           <input type="password" id="login-password" required
             class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50
                    focus:outline-none focus:ring-2 focus:ring-[#0066CC] focus:border-transparent transition" />
+          <button type="button" onclick="mostrarVistaOlvide()" class="mt-2 text-xs text-gray-500 hover:text-gray-900 transition">
+            ¿Olvidaste tu contraseña?
+          </button>
         </div>
         <button type="submit" id="login-btn"
           class="w-full py-3 rounded-xl bg-[#0066CC] text-white font-medium
@@ -367,6 +370,44 @@
           Iniciar sesión
         </button>
         <p id="login-error" class="hidden text-sm text-red-600 text-center"></p>
+      </form>
+
+      <!-- Pedir el correo para mandar el link de recuperación -->
+      <form id="olvide-form" class="hidden space-y-5">
+        <div>
+          <label for="olvide-email" class="block text-sm font-medium text-gray-700 mb-2">Correo</label>
+          <input type="email" id="olvide-email" required
+            class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50
+                   focus:outline-none focus:ring-2 focus:ring-[#0066CC] focus:border-transparent transition" />
+          <p class="mt-2 text-xs text-gray-400">Te mandamos un link para crear una contraseña nueva.</p>
+        </div>
+        <button type="submit" id="olvide-btn"
+          class="w-full py-3 rounded-xl bg-[#0066CC] text-white font-medium
+                 hover:bg-[#0055AD] transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+          Enviar link de recuperación
+        </button>
+        <button type="button" onclick="abrirModal('login')" class="w-full text-sm text-gray-500 hover:text-gray-900 transition">
+          ← Volver a iniciar sesión
+        </button>
+        <p id="olvide-error" class="hidden text-sm text-red-600 text-center"></p>
+        <p id="olvide-exito" class="hidden text-sm text-green-600 text-center"></p>
+      </form>
+
+      <!-- Escribir la nueva contraseña (se activa sola al volver del link del correo) -->
+      <form id="nueva-password-form" class="hidden space-y-5">
+        <div>
+          <label for="nueva-password" class="block text-sm font-medium text-gray-700 mb-2">Nueva contraseña</label>
+          <input type="password" id="nueva-password" required minlength="6"
+            class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50
+                   focus:outline-none focus:ring-2 focus:ring-[#0066CC] focus:border-transparent transition" />
+          <p class="mt-2 text-xs text-gray-400">Mínimo 6 caracteres.</p>
+        </div>
+        <button type="submit" id="nueva-password-btn"
+          class="w-full py-3 rounded-xl bg-[#0066CC] text-white font-medium
+                 hover:bg-[#0055AD] transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+          Guardar nueva contraseña
+        </button>
+        <p id="nueva-password-error" class="hidden text-sm text-red-600 text-center"></p>
       </form>
 
       <!-- Formulario de registro (oculto hasta elegir la pestaña "Crear cuenta") -->
@@ -620,8 +661,14 @@
 
     // ===== Si ya había sesión activa al entrar, saltar directo al panel =====
     // (no tiene caso mostrarle la página de marketing a alguien que ya
-    // inició sesión antes).
+    // inició sesión antes). EXCEPTO si viene de un link de recuperación de
+    // contraseña: ese link también crea una sesión, pero aquí no hay que
+    // mandarlo a su panel todavía — primero tiene que poner su contraseña
+    // nueva (eso lo maneja el listener de PASSWORD_RECOVERY más abajo).
+    const esLinkDeRecuperacion = window.location.hash.includes('type=recovery');
+
     (async () => {
+      if (esLinkDeRecuperacion) return;
       const { data: { session } } = await sb.auth.getSession();
       if (session) {
         document.getElementById('pantalla-redirigiendo').classList.remove('hidden');
@@ -640,8 +687,14 @@
     const loginForm = document.getElementById('login-form');
     const signupForm = document.getElementById('signup-form');
 
+    const olvideForm = document.getElementById('olvide-form');
+    const nuevaPasswordForm = document.getElementById('nueva-password-form');
+
     function mostrarTab(activa) {
       const esLogin = activa === 'login';
+      document.getElementById('tabs-auth').classList.remove('hidden');
+      olvideForm.classList.add('hidden');
+      nuevaPasswordForm.classList.add('hidden');
       loginForm.classList.toggle('hidden', !esLogin);
       signupForm.classList.toggle('hidden', esLogin);
       tabLogin.classList.toggle('border-[#0066CC]', esLogin);
@@ -655,6 +708,89 @@
     }
     tabLogin.addEventListener('click', () => mostrarTab('login'));
     tabSignup.addEventListener('click', () => mostrarTab('signup'));
+
+    // --- ¿Olvidaste tu contraseña? ---
+    function mostrarVistaOlvide() {
+      modalAuth.classList.remove('hidden');
+      document.getElementById('tabs-auth').classList.add('hidden');
+      loginForm.classList.add('hidden');
+      signupForm.classList.add('hidden');
+      nuevaPasswordForm.classList.add('hidden');
+      olvideForm.classList.remove('hidden');
+    }
+
+    olvideForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errorEl = document.getElementById('olvide-error');
+      const exitoEl = document.getElementById('olvide-exito');
+      const btn = document.getElementById('olvide-btn');
+      errorEl.classList.add('hidden');
+      exitoEl.classList.add('hidden');
+      btn.disabled = true;
+      btn.textContent = 'Enviando…';
+
+      const correo = document.getElementById('olvide-email').value;
+      // redirectTo: al volver del correo, Supabase agrega el token a la URL
+      // de esta misma página; el listener de abajo detecta el evento
+      // PASSWORD_RECOVERY y muestra el formulario de nueva contraseña solo.
+      const { error } = await sb.auth.resetPasswordForEmail(correo, {
+        redirectTo: window.location.origin + window.location.pathname,
+      });
+
+      btn.disabled = false;
+      btn.textContent = 'Enviar link de recuperación';
+
+      if (error) {
+        errorEl.textContent = error.message;
+        errorEl.classList.remove('hidden');
+        return;
+      }
+      exitoEl.textContent = 'Listo. Revisa tu correo (y la carpeta de spam) para el link de recuperación.';
+      exitoEl.classList.remove('hidden');
+      olvideForm.reset();
+    });
+
+    // --- Nueva contraseña (llega aquí solo, vía el link del correo) ---
+    // Supabase dispara el evento PASSWORD_RECOVERY cuando detecta el token
+    // de recuperación en la URL al cargar la página.
+    sb.auth.onAuthStateChange((evento) => {
+      if (evento === 'PASSWORD_RECOVERY') {
+        modalAuth.classList.remove('hidden');
+        document.getElementById('tabs-auth').classList.add('hidden');
+        loginForm.classList.add('hidden');
+        signupForm.classList.add('hidden');
+        olvideForm.classList.add('hidden');
+        nuevaPasswordForm.classList.remove('hidden');
+      }
+    });
+
+    nuevaPasswordForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errorEl = document.getElementById('nueva-password-error');
+      const btn = document.getElementById('nueva-password-btn');
+      errorEl.classList.add('hidden');
+      btn.disabled = true;
+      btn.textContent = 'Guardando…';
+
+      const { data, error } = await sb.auth.updateUser({
+        password: document.getElementById('nueva-password').value,
+      });
+
+      btn.disabled = false;
+      btn.textContent = 'Guardar nueva contraseña';
+
+      if (error) {
+        errorEl.textContent = error.message;
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      // Ya quedó la sesión activa con la contraseña nueva: lo mandamos
+      // directo a su panel, igual que un login normal.
+      modalAuth.classList.add('hidden');
+      document.getElementById('pantalla-redirigiendo').classList.remove('hidden');
+      await irAPanelSegunRol(data.user);
+    });
 
     // --- Login ---
     loginForm.addEventListener('submit', async (e) => {

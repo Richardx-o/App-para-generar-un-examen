@@ -23,7 +23,13 @@
 <body>
 
 <div id="pantalla-verificando" class="min-h-screen flex items-center justify-center px-4">
-  <p class="text-sm" style="color: var(--text-muted);">Verificando sesión…</p>
+  <div class="card p-8 max-w-sm w-full text-center">
+    <p id="verificando" class="text-sm" style="color: var(--text-muted);">Verificando sesión…</p>
+    <div id="acceso-denegado" class="hidden">
+      <p class="mb-3" id="mensaje-acceso-denegado"></p>
+      <a href="index.html" class="btn btn-accent inline-block">Volver al inicio</a>
+    </div>
+  </div>
 </div>
 
 <div id="panel-alumno" class="hidden min-h-screen flex flex-col">
@@ -90,6 +96,7 @@
   </main>
 </div>
 
+<script src="utilidades.js"></script>
 <script src="alumno.js"></script>
 </body>
 </html>

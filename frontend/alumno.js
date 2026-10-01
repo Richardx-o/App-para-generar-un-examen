@@ -9,7 +9,25 @@ let usuarioActual = null;
 let intentoActual = null;
 let preguntasActuales = [];
 
-function continuarComoAlumno(usuario) {
+async function continuarComoAlumno(usuario) {
+  const { data: perfil, error } = await sb.from('perfiles').select('activo').eq('id', usuario.id).single();
+
+  if (error || !perfil) {
+    document.getElementById('verificando').classList.add('hidden');
+    document.getElementById('mensaje-acceso-denegado').textContent = 'No se pudo cargar tu perfil.';
+    document.getElementById('acceso-denegado').classList.remove('hidden');
+    return;
+  }
+
+  if (!perfil.activo) {
+    await sb.auth.signOut();
+    document.getElementById('verificando').classList.add('hidden');
+    document.getElementById('mensaje-acceso-denegado').textContent =
+      'Tu cuenta fue desactivada. Contacta al administrador si crees que es un error.';
+    document.getElementById('acceso-denegado').classList.remove('hidden');
+    return;
+  }
+
   usuarioActual = usuario;
   document.getElementById('pantalla-verificando').classList.add('hidden');
   document.getElementById('panel-alumno').classList.remove('hidden');
@@ -27,7 +45,7 @@ async function cerrarSesion() {
 (async () => {
   const { data: { session } } = await sb.auth.getSession();
   if (session) {
-    continuarComoAlumno(session.user);
+    await continuarComoAlumno(session.user);
   } else {
     location.href = 'index.html';
   }
@@ -61,7 +79,7 @@ async function cargarMisResultados() {
     .eq('estado', 'entregado')
     .order('entregado_en', { ascending: false });
 
-  if (error) { contenedor.innerHTML = `<p class="text-sm" style="color:var(--danger)">${error.message}</p>`; return; }
+  if (error) { contenedor.innerHTML = `<p class="text-sm" style="color:var(--danger)">${escaparHTML(error.message)}</p>`; return; }
 
   if (!data || data.length === 0) {
     contenedor.innerHTML = `<p class="text-sm" style="color:var(--text-muted)">Todavía no has entregado ningún examen.</p>`;
@@ -75,7 +93,7 @@ async function cargarMisResultados() {
     div.className = 'card p-4 flex items-center justify-between gap-3 flex-wrap';
     div.innerHTML = `
       <div>
-        <p class="font-medium">${i.examenes?.titulo || 'Examen'}</p>
+        <p class="font-medium">${escaparHTML(i.examenes?.titulo || 'Examen')}</p>
         <p class="text-xs mt-0.5" style="color:var(--text-muted)">${new Date(i.entregado_en).toLocaleString()}</p>
       </div>
       <div class="flex items-center gap-3">
@@ -117,7 +135,8 @@ async function unirseAExamen() {
   }
 
   const { data: examen } = await sb.from('examenes').select('titulo').eq('id', intento.examen_id).single();
-  const { data: preguntas } = await sb.from('examen_preguntas').select('*').eq('examen_id', intento.examen_id).order('orden');
+  // Solo las columnas que el alumno necesita: NUNCA letra_correcta.
+  const { data: preguntas } = await sb.from('examen_preguntas').select('id, orden, pregunta_texto, opcion_a, opcion_b, opcion_c, opcion_d').eq('examen_id', intento.examen_id).order('orden');
   preguntasActuales = preguntas;
 
   ocultarTodasLasTarjetas();
@@ -130,13 +149,13 @@ async function unirseAExamen() {
   preguntas.forEach((p, i) => {
     const div = document.createElement('div');
     div.className = 'card p-4 mb-3';
-    let html = `<p class="font-medium mb-3">${i+1}. ${p.pregunta_texto}</p>`;
+    let html = `<p class="font-medium mb-3">${i+1}. ${escaparHTML(p.pregunta_texto)}</p>`;
     ['A','B','C','D'].forEach(letra => {
       const opcion = p[`opcion_${letra.toLowerCase()}`];
       html += `
         <label class="flex items-center gap-2 py-1.5 text-sm cursor-pointer">
           <input type="radio" name="pregunta-${p.id}" value="${letra}" style="width:auto;">
-          <span>${letra}) ${opcion}</span>
+          <span>${letra}) ${escaparHTML(opcion)}</span>
         </label>`;
     });
     div.innerHTML = html;

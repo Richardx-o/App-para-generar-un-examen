@@ -16,10 +16,22 @@ function mostrarSeccion(nombre) {
 }
 
 async function continuarComoMaestro(usuario) {
-  const { data: perfil, error: errorPerfil } = await sb.from('perfiles').select('rol, nombre_completo').eq('id', usuario.id).single();
+  const { data: perfil, error: errorPerfil } = await sb.from('perfiles').select('rol, nombre_completo, activo').eq('id', usuario.id).single();
 
   if (errorPerfil || !perfil || (perfil.rol !== 'profesor' && perfil.rol !== 'admin')) {
     document.getElementById('verificando').classList.add('hidden');
+    document.getElementById('mensaje-acceso-denegado').textContent = 'Esta cuenta no tiene rol de maestro.';
+    document.getElementById('acceso-denegado').classList.remove('hidden');
+    return;
+  }
+
+  if (!perfil.activo) {
+    // No basta con negar el acceso: si lo dejamos con sesión abierta,
+    // se queda viendo esta pantalla pero técnicamente sigue logueado.
+    await sb.auth.signOut();
+    document.getElementById('verificando').classList.add('hidden');
+    document.getElementById('mensaje-acceso-denegado').textContent =
+      'Tu cuenta fue desactivada. Contacta al administrador si crees que es un error.';
     document.getElementById('acceso-denegado').classList.remove('hidden');
     return;
   }
@@ -51,11 +63,14 @@ async function cerrarSesion() {
 
 function badgeDificultad(d) {
   const clases = { facil: 'badge-success', media: 'badge-info', dificil: 'badge-danger' };
-  return `<span class="badge ${clases[d] || 'badge-muted'}">${d}</span>`;
+  return `<span class="badge ${clases[d] || 'badge-muted'}">${escaparHTML(d)}</span>`;
 }
 
 let bancoCompleto = [];
 let categoriaActiva = null; // null = todas
+// Lista de categorías en el orden en que se pintan; los botones usan su
+// posición en vez del nombre, así un apóstrofo en la categoría no rompe el onclick.
+let categoriasOrdenadas = [];
 
 async function cargarBanco() {
   const { data, error } = await sb.from('preguntas').select('*').eq('creado_por', usuarioActual.id).order('creado_en', { ascending: false });
@@ -72,6 +87,7 @@ function pintarCategorias() {
   const conteos = {};
   bancoCompleto.forEach(p => { conteos[p.categoria] = (conteos[p.categoria] || 0) + 1; });
   const categorias = Object.keys(conteos).sort();
+  categoriasOrdenadas = categorias;
 
   const grid = document.getElementById('grid-categorias');
   grid.innerHTML = '';
@@ -86,10 +102,10 @@ function pintarCategorias() {
       <p class="cat-conteo">${total} pregunta${total === 1 ? '' : 's'}</p>
     </button>`;
 
-  categorias.forEach(cat => {
+  categorias.forEach((cat, i) => {
     grid.innerHTML += `
-      <button class="cat-card ${categoriaActiva === cat ? 'activa' : ''}" onclick="filtrarPorCategoria('${cat}')">
-        <p class="cat-nombre">${cat}</p>
+      <button class="cat-card ${categoriaActiva === cat ? 'activa' : ''}" onclick="filtrarPorCategoria(categoriasOrdenadas[${i}])">
+        <p class="cat-nombre">${escaparHTML(cat)}</p>
         <p class="cat-conteo">${conteos[cat]} pregunta${conteos[cat] === 1 ? '' : 's'}</p>
       </button>`;
   });
@@ -108,18 +124,58 @@ function pintarTablaPreguntas() {
 
   preguntas.forEach(p => {
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${p.pregunta}</td>
+    tr.innerHTML = `<td>${escaparHTML(p.pregunta)}</td>
       <td><span class="badge badge-muted">${p.respuesta_correcta}</span></td>
       <td>${badgeDificultad(p.dificultad)}</td>
-      <td>${p.categoria}</td>
-      <td><button class="btn btn-danger" onclick="borrarPregunta('${p.id}')">Borrar</button></td>`;
+      <td>${escaparHTML(p.categoria)}</td>
+      <td class="whitespace-nowrap">
+        <button class="btn" onclick="editarPregunta('${p.id}')">Editar</button>
+        <button class="btn btn-danger" onclick="borrarPregunta('${p.id}')">Borrar</button>
+      </td>`;
     tbody.appendChild(tr);
   });
 }
 
 async function borrarPregunta(id) {
+  const pregunta = bancoCompleto.find(p => p.id === id);
+  const confirmado = confirm(
+    `¿Borrar esta pregunta?\n\n"${pregunta ? pregunta.pregunta : ''}"\n\nNo se puede deshacer.`
+  );
+  if (!confirmado) return;
+
   await sb.from('preguntas').delete().eq('id', id);
   cargarBanco();
+}
+
+let preguntaEditandoId = null; // null = el formulario está en modo "agregar"
+
+function editarPregunta(id) {
+  const p = bancoCompleto.find(x => x.id === id);
+  if (!p) return;
+
+  preguntaEditandoId = id;
+  document.getElementById('p-pregunta').value = p.pregunta;
+  document.getElementById('p-a').value = p.opcion_a;
+  document.getElementById('p-b').value = p.opcion_b;
+  document.getElementById('p-c').value = p.opcion_c;
+  document.getElementById('p-d').value = p.opcion_d;
+  document.getElementById('p-correcta').value = p.respuesta_correcta;
+  document.getElementById('p-dificultad').value = p.dificultad;
+  document.getElementById('p-categoria').value = p.categoria;
+
+  document.getElementById('titulo-form-pregunta').textContent = 'Editando pregunta';
+  document.getElementById('btn-guardar-pregunta').textContent = 'Guardar cambios';
+  document.getElementById('btn-cancelar-edicion').classList.remove('hidden');
+  document.getElementById('form-pregunta').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function cancelarEdicionPregunta() {
+  preguntaEditandoId = null;
+  document.getElementById('form-pregunta').reset();
+  document.getElementById('p-categoria').value = 'circuitos';
+  document.getElementById('titulo-form-pregunta').textContent = 'Agregar pregunta';
+  document.getElementById('btn-guardar-pregunta').textContent = 'Agregar a mi banco';
+  document.getElementById('btn-cancelar-edicion').classList.add('hidden');
 }
 
 document.getElementById('form-pregunta').addEventListener('submit', async (e) => {
@@ -127,7 +183,7 @@ document.getElementById('form-pregunta').addEventListener('submit', async (e) =>
   const errorEl = document.getElementById('pregunta-error');
   errorEl.classList.add('hidden');
 
-  const { error } = await sb.from('preguntas').insert({
+  const datos = {
     pregunta: document.getElementById('p-pregunta').value,
     opcion_a: document.getElementById('p-a').value,
     opcion_b: document.getElementById('p-b').value,
@@ -136,12 +192,18 @@ document.getElementById('form-pregunta').addEventListener('submit', async (e) =>
     respuesta_correcta: document.getElementById('p-correcta').value,
     dificultad: document.getElementById('p-dificultad').value,
     categoria: document.getElementById('p-categoria').value,
-    creado_por: usuarioActual.id,
-  });
+  };
+
+  // Ojo: si esta pregunta ya se usó en un examen anterior, ese examen guardó
+  // su propia copia congelada en examen_preguntas — editarla aquí NO cambia
+  // exámenes ya generados, solo afecta a los que se generen de ahora en adelante.
+  const { error } = preguntaEditandoId
+    ? await sb.from('preguntas').update(datos).eq('id', preguntaEditandoId)
+    : await sb.from('preguntas').insert({ ...datos, creado_por: usuarioActual.id });
 
   if (error) { errorEl.textContent = error.message; errorEl.classList.remove('hidden'); return; }
-  e.target.reset();
-  document.getElementById('p-categoria').value = 'circuitos';
+
+  cancelarEdicionPregunta();
   cargarBanco();
 });
 
@@ -166,7 +228,7 @@ document.getElementById('form-examen').addEventListener('submit', async (e) => {
   if (error) { errorEl.textContent = error.message; errorEl.classList.remove('hidden'); return; }
 
   const { data: examen } = await sb.from('examenes').select('codigo_acceso').eq('id', examenId).single();
-  exitoEl.innerHTML = `Examen creado. Código de acceso para tus alumnos: <span class="badge badge-success" style="font-size:14px;">${examen.codigo_acceso}</span>`;
+  exitoEl.innerHTML = `Examen creado. Código de acceso para tus alumnos: <span class="badge badge-success" style="font-size:14px;">${escaparHTML(examen.codigo_acceso)}</span>`;
   exitoEl.classList.remove('hidden');
   cargarHistorial();
 });
@@ -230,8 +292,8 @@ async function cargarHistorial() {
 
     const filasAlumnos = lista.map(i => `
       <tr>
-        <td>${i.perfiles?.nombre_completo || '<span style="color:var(--text-muted)">(sin nombre)</span>'}</td>
-        <td>${i.perfiles?.matricula || '—'}</td>
+        <td>${i.perfiles?.nombre_completo ? escaparHTML(i.perfiles.nombre_completo) : '<span style="color:var(--text-muted)">(sin nombre)</span>'}</td>
+        <td>${escaparHTML(i.perfiles?.matricula || '—')}</td>
         <td>${Number(i.calificacion) >= 70
               ? `<span class="badge badge-success">${i.calificacion}%</span>`
               : `<span class="badge badge-danger">${i.calificacion}%</span>`}</td>
@@ -243,9 +305,9 @@ async function cargarHistorial() {
     tarjeta.innerHTML = `
       <button class="w-full flex items-center justify-between gap-3 p-4 text-left" style="background:transparent; border:none; cursor:pointer;" onclick="this.nextElementSibling.classList.toggle('hidden')">
         <div>
-          <p class="font-medium">${ex.titulo}</p>
+          <p class="font-medium">${escaparHTML(ex.titulo)}</p>
           <p class="text-xs mt-0.5" style="color:var(--text-muted)">
-            Código <span class="badge badge-muted">${ex.codigo_acceso}</span>
+            Código <span class="badge badge-muted">${escaparHTML(ex.codigo_acceso)}</span>
             · ${new Date(ex.creado_en).toLocaleDateString()}
           </p>
         </div>
@@ -255,6 +317,12 @@ async function cargarHistorial() {
         </div>
       </button>
       <div class="hidden border-t" style="border-color:var(--border);">
+        <div class="flex items-center justify-between gap-3 p-4" style="background:var(--surface-2);">
+          <span class="badge ${ex.cerrado ? 'badge-danger' : 'badge-success'}">${ex.cerrado ? 'Cerrado' : 'Abierto'}</span>
+          <button class="btn" onclick="toggleCerradoExamen('${ex.id}', ${!ex.cerrado})">
+            ${ex.cerrado ? 'Reabrir examen' : 'Cerrar examen'}
+          </button>
+        </div>
         ${total === 0
           ? `<p class="p-4 text-sm" style="color:var(--text-muted)">Nadie ha entregado este examen todavía.</p>`
           : `<table>
@@ -264,4 +332,9 @@ async function cargarHistorial() {
       </div>`;
     contenedor.appendChild(tarjeta);
   }
+}
+
+async function toggleCerradoExamen(examenId, nuevoValor) {
+  await sb.from('examenes').update({ cerrado: nuevoValor }).eq('id', examenId);
+  cargarHistorial();
 }

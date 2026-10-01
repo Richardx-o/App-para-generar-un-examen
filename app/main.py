@@ -30,7 +30,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_methods=["GET"],
+    allow_methods=["GET", "DELETE"],
     allow_headers=["*"],
 )
 
@@ -201,8 +201,14 @@ async def resultado_examen(intento_id: str, authorization: str = Header(...)):
     nombre_alumno = (perfil_resp.data or {}).get("nombre_completo") or "Alumno"
     matricula_alumno = (perfil_resp.data or {}).get("matricula")
 
+    # Hasta aquí todo se consultó con el token del alumno, así que RLS ya
+    # comprobó que el intento es suyo y está entregado. La clave de respuestas
+    # se lee con la service key porque el alumno NO tiene permiso de leer
+    # letra_correcta directamente (si lo tuviera, podría verla con F12
+    # mientras contesta el examen).
+    cliente_servicio = await get_supabase_client()
     preguntas_resp = await (
-        client.table("examen_preguntas")
+        cliente_servicio.table("examen_preguntas")
         .select("id, pregunta_texto, opcion_a, opcion_b, opcion_c, opcion_d, letra_correcta, orden")
         .eq("examen_id", intento["examen_id"])
         .order("orden")

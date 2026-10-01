@@ -14,10 +14,20 @@ function mostrarSeccion(nombre) {
 }
 
 async function continuarComoAdmin(usuario) {
-  const { data: perfil } = await sb.from('perfiles').select('rol').eq('id', usuario.id).single();
+  const { data: perfil } = await sb.from('perfiles').select('rol, activo').eq('id', usuario.id).single();
 
   if (!perfil || perfil.rol !== 'admin') {
     document.getElementById('verificando').classList.add('hidden');
+    document.getElementById('mensaje-acceso-denegado').textContent = 'Esta cuenta no tiene rol de administrador.';
+    document.getElementById('acceso-denegado').classList.remove('hidden');
+    return false;
+  }
+
+  if (!perfil.activo) {
+    await sb.auth.signOut();
+    document.getElementById('verificando').classList.add('hidden');
+    document.getElementById('mensaje-acceso-denegado').textContent =
+      'Tu cuenta fue desactivada. Contacta a otro administrador si crees que es un error.';
     document.getElementById('acceso-denegado').classList.remove('hidden');
     return false;
   }
@@ -51,25 +61,30 @@ async function cerrarSesion() {
 
 function badgeRol(rol) {
   const clases = { admin: 'badge-danger', profesor: 'badge-info', alumno: 'badge-muted' };
-  return `<span class="badge ${clases[rol] || 'badge-muted'}">${rol}</span>`;
+  return `<span class="badge ${clases[rol] || 'badge-muted'}">${escaparHTML(rol)}</span>`;
 }
+
+// Se guardan por id para no meter el nombre dentro del onclick del botón.
+let usuariosPorId = {};
 
 async function cargarUsuarios() {
   const { data, error } = await sb.from('perfiles').select('id, nombre_completo, matricula, rol, activo, creado_en').order('creado_en', { ascending: false });
   const tbody = document.querySelector('#tabla-usuarios tbody');
   tbody.innerHTML = '';
   if (error) { console.error(error); return; }
+  usuariosPorId = {};
   data.forEach(u => {
+    usuariosPorId[u.id] = u;
     const opciones = ['alumno','profesor','admin'].map(r => `<option value="${r}" ${r===u.rol?'selected':''}>${r}</option>`).join('');
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${u.nombre_completo || '<span style="color:var(--text-muted)">(sin nombre)</span>'}</td>
-      <td>${u.matricula || '—'}</td>
+    tr.innerHTML = `<td>${u.nombre_completo ? escaparHTML(u.nombre_completo) : '<span style="color:var(--text-muted)">(sin nombre)</span>'}</td>
+      <td>${escaparHTML(u.matricula || '—')}</td>
       <td><select class="rol-select" onchange="cambiarRol('${u.id}', this.value)">${opciones}</select></td>
       <td>${u.activo ? '<span class="badge badge-success">Activa</span>' : '<span class="badge badge-danger">Desactivada</span>'}</td>
       <td style="color:var(--text-muted)">${new Date(u.creado_en).toLocaleDateString()}</td>
       <td class="whitespace-nowrap">
         <button class="btn" onclick="toggleActivoUsuario('${u.id}', ${!u.activo})">${u.activo ? 'Desactivar' : 'Reactivar'}</button>
-        <button class="btn btn-danger" onclick="borrarUsuarioPermanente('${u.id}', '${(u.nombre_completo || 'este usuario').replace(/'/g, "\\'")}')">Borrar</button>
+        <button class="btn btn-danger" onclick="borrarUsuarioPermanente('${u.id}')">Borrar</button>
       </td>`;
     tbody.appendChild(tr);
   });
@@ -85,7 +100,8 @@ async function toggleActivoUsuario(id, nuevoValor) {
   cargarUsuarios();
 }
 
-async function borrarUsuarioPermanente(id, nombre) {
+async function borrarUsuarioPermanente(id) {
+  const nombre = usuariosPorId[id]?.nombre_completo || 'este usuario';
   const confirmado = confirm(
     `¿Borrar PERMANENTEMENTE la cuenta de "${nombre}"?\n\n` +
     `Esto elimina también todo su contenido (preguntas, exámenes, calificaciones). ` +
@@ -138,7 +154,7 @@ async function guardarClave() {
 
 function badgeDificultad(d) {
   const clases = { facil: 'badge-success', media: 'badge-info', dificil: 'badge-danger' };
-  return `<span class="badge ${clases[d] || 'badge-muted'}">${d}</span>`;
+  return `<span class="badge ${clases[d] || 'badge-muted'}">${escaparHTML(d)}</span>`;
 }
 
 let bancoGlobalCompleto = [];
@@ -183,7 +199,7 @@ function pintarProfesores() {
     .forEach(([id, g]) => {
       grid.innerHTML += `
         <button class="cat-card ${profesorActivo === id ? 'activa' : ''}" onclick="filtrarPorProfesor('${id}')">
-          <p class="cat-nombre" style="text-transform:none;">${g.nombre}</p>
+          <p class="cat-nombre" style="text-transform:none;">${escaparHTML(g.nombre)}</p>
           <p class="cat-conteo">${g.count} pregunta${g.count === 1 ? '' : 's'}</p>
         </button>`;
     });
@@ -204,8 +220,8 @@ function pintarTablaPreguntasGlobal() {
     const tr = document.createElement('tr');
     if (!p.activo) tr.className = 'inactivo';
     const dueño = p.perfiles?.nombre_completo || '(desconocido)';
-    tr.innerHTML = `<td>${p.pregunta}<br><span class="text-xs" style="color:var(--text-muted)">de ${dueño}</span></td>
-      <td>${p.categoria}</td>
+    tr.innerHTML = `<td>${escaparHTML(p.pregunta)}<br><span class="text-xs" style="color:var(--text-muted)">de ${escaparHTML(dueño)}</span></td>
+      <td>${escaparHTML(p.categoria)}</td>
       <td>${badgeDificultad(p.dificultad)}</td>
       <td>${p.activo ? '<span class="badge badge-success">Activa</span>' : '<span class="badge badge-danger">Desactivada</span>'}</td>
       <td class="whitespace-nowrap">
@@ -222,6 +238,12 @@ async function toggleActivo(id, nuevoValor) {
 }
 
 async function borrarPreguntaGlobal(id) {
+  const pregunta = bancoGlobalCompleto.find(p => p.id === id);
+  const confirmado = confirm(
+    `¿Borrar esta pregunta${pregunta?.perfiles?.nombre_completo ? ' de ' + pregunta.perfiles.nombre_completo : ''}?\n\n"${pregunta ? pregunta.pregunta : ''}"\n\nNo se puede deshacer.`
+  );
+  if (!confirmado) return;
+
   await sb.from('preguntas').delete().eq('id', id);
   cargarPreguntas();
   cargarStats();
