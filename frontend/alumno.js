@@ -32,6 +32,7 @@ async function continuarComoAlumno(usuario) {
   document.getElementById('pantalla-verificando').classList.add('hidden');
   document.getElementById('panel-alumno').classList.remove('hidden');
   document.getElementById('sesion-info').textContent = usuario.email;
+  revisarPerfilIncompleto(usuario);
 }
 
 async function cerrarSesion() {

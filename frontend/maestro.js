@@ -42,6 +42,7 @@ async function continuarComoMaestro(usuario) {
   document.getElementById('sesion-info').textContent = usuario.email;
   cargarBanco();
   cargarHistorial();
+  revisarPerfilIncompleto(usuario);
 }
 
 async function cerrarSesion() {

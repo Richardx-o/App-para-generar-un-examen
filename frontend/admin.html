@@ -108,6 +108,28 @@
         <h1 class="text-2xl font-semibold">Usuarios y roles</h1>
         <button class="btn" onclick="cargarUsuarios()">Actualizar</button>
       </div>
+
+      <!-- Filtros: se aplican en el navegador sobre la lista ya cargada -->
+      <div class="flex flex-wrap gap-3 mb-2">
+        <input type="text" id="filtro-usuarios-texto" placeholder="Buscar por nombre o matrícula…" class="flex-1" style="min-width:200px;">
+        <select id="filtro-usuarios-rol" class="rol-select" style="padding:9px 12px; font-size:14px;">
+          <option value="">Todos los roles</option>
+          <option value="alumno">Alumnos</option>
+          <option value="profesor">Maestros</option>
+          <option value="admin">Administradores</option>
+        </select>
+        <select id="filtro-usuarios-estado" class="rol-select" style="padding:9px 12px; font-size:14px;">
+          <option value="">Todos los estados</option>
+          <option value="activa">Activas</option>
+          <option value="desactivada">Desactivadas</option>
+        </select>
+        <select id="filtro-usuarios-perfil" class="rol-select" style="padding:9px 12px; font-size:14px;">
+          <option value="">Todos los perfiles</option>
+          <option value="sin-nombre">Sin nombre (perfil incompleto)</option>
+        </select>
+      </div>
+      <p id="contador-usuarios" class="text-xs mb-3" style="color: var(--text-muted);"></p>
+
       <div class="card overflow-x-auto">
         <table id="tabla-usuarios">
           <thead><tr><th>Nombre</th><th>Matrícula</th><th>Rol</th><th>Estado</th><th>Registrado</th><th>Acciones</th></tr></thead>
@@ -150,6 +172,7 @@
 </div>
 
 <script src="utilidades.js"></script>
+<script src="perfil_incompleto.js"></script>
 <script src="admin.js"></script>
 </body>
 </html>

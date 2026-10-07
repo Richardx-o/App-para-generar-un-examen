@@ -39,6 +39,7 @@ async function continuarComoAdmin(usuario) {
   cargarStats();
   cargarClave();
   cargarPreguntas();
+  revisarPerfilIncompleto(usuario);
   return true;
 }
 
@@ -67,14 +68,52 @@ function badgeRol(rol) {
 // Se guardan por id para no meter el nombre dentro del onclick del botón.
 let usuariosPorId = {};
 
+let listaUsuarios = []; // todos los usuarios cargados; los filtros trabajan sobre esta lista
+
+// Quita acentos y pasa a minúsculas, para que "jose" encuentre "José".
+function normalizarTexto(texto) {
+  return String(texto ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
 async function cargarUsuarios() {
   const { data, error } = await sb.from('perfiles').select('id, nombre_completo, matricula, rol, activo, creado_en').order('creado_en', { ascending: false });
+  if (error) { console.error(error); return; }
+  listaUsuarios = data;
+  usuariosPorId = {};
+  data.forEach(u => { usuariosPorId[u.id] = u; });
+  pintarUsuarios();
+}
+
+function pintarUsuarios() {
+  const texto = normalizarTexto(document.getElementById('filtro-usuarios-texto').value.trim());
+  const rol = document.getElementById('filtro-usuarios-rol').value;
+  const estado = document.getElementById('filtro-usuarios-estado').value;
+  const perfil = document.getElementById('filtro-usuarios-perfil').value;
+
+  const filtrados = listaUsuarios.filter(u => {
+    if (rol && u.rol !== rol) return false;
+    if (estado === 'activa' && !u.activo) return false;
+    if (estado === 'desactivada' && u.activo) return false;
+    if (perfil === 'sin-nombre' && (u.nombre_completo || '').trim()) return false;
+    if (texto) {
+      const pajar = normalizarTexto(`${u.nombre_completo || ''} ${u.matricula || ''}`);
+      if (!pajar.includes(texto)) return false;
+    }
+    return true;
+  });
+
+  document.getElementById('contador-usuarios').textContent =
+    `Mostrando ${filtrados.length} de ${listaUsuarios.length} usuarios.`;
+
   const tbody = document.querySelector('#tabla-usuarios tbody');
   tbody.innerHTML = '';
-  if (error) { console.error(error); return; }
-  usuariosPorId = {};
-  data.forEach(u => {
-    usuariosPorId[u.id] = u;
+
+  if (filtrados.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="color:var(--text-muted); text-align:center; padding:24px;">Ningún usuario coincide con los filtros.</td></tr>`;
+    return;
+  }
+
+  filtrados.forEach(u => {
     const opciones = ['alumno','profesor','admin'].map(r => `<option value="${r}" ${r===u.rol?'selected':''}>${r}</option>`).join('');
     const tr = document.createElement('tr');
     tr.innerHTML = `<td>${u.nombre_completo ? escaparHTML(u.nombre_completo) : '<span style="color:var(--text-muted)">(sin nombre)</span>'}</td>
@@ -91,7 +130,10 @@ async function cargarUsuarios() {
 }
 
 async function cambiarRol(id, nuevoRol) {
-  await sb.from('perfiles').update({ rol: nuevoRol }).eq('id', id);
+  const { error } = await sb.from('perfiles').update({ rol: nuevoRol }).eq('id', id);
+  if (error) { alert(error.message); cargarUsuarios(); return; }
+  // Mantiene la lista en memoria al día, para que los filtros no usen el rol viejo.
+  if (usuariosPorId[id]) usuariosPorId[id].rol = nuevoRol;
   cargarStats();
 }
 
@@ -248,3 +290,8 @@ async function borrarPreguntaGlobal(id) {
   cargarPreguntas();
   cargarStats();
 }
+// ---- Filtros de la lista de usuarios ----
+document.getElementById('filtro-usuarios-texto').addEventListener('input', pintarUsuarios);
+['filtro-usuarios-rol', 'filtro-usuarios-estado', 'filtro-usuarios-perfil'].forEach(id => {
+  document.getElementById(id).addEventListener('change', pintarUsuarios);
+});
